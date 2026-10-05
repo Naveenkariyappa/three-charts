@@ -1284,3 +1284,108 @@ kbd {
   font-size: 14px;
   color: var(--text2);
 }
+
+/* ---- syntax colors: muted hues that read on the code background in each theme (all >= 4.5:1) ---- */
+:root {
+  --syn-comment: #626b79;
+  --syn-keyword: #a3367a;
+  --syn-string: #1a7533;
+  --syn-number: #a35200;
+  --syn-function: #1f5bb8;
+  --syn-class: #8a5300;
+  --syn-tag: #b42318;
+  --syn-attr: #7340c9;
+  --syn-property: #0b6688;
+  --syn-punct: #555e6b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --syn-comment: #858e9b;
+    --syn-keyword: #f28fc9;
+    --syn-string: #8ddcab;
+    --syn-number: #ffb86b;
+    --syn-function: #8fb4f5;
+    --syn-class: #f2cc60;
+    --syn-tag: #ff9b91;
+    --syn-attr: #c9adff;
+    --syn-property: #7fd3f5;
+    --syn-punct: #a3abb6;
+  }
+}
+:root[data-theme='dark'] {
+  --syn-comment: #858e9b;
+  --syn-keyword: #f28fc9;
+  --syn-string: #8ddcab;
+  --syn-number: #ffb86b;
+  --syn-function: #8fb4f5;
+  --syn-class: #f2cc60;
+  --syn-tag: #ff9b91;
+  --syn-attr: #c9adff;
+  --syn-property: #7fd3f5;
+  --syn-punct: #a3abb6;
+}
+.code pre code {
+  color: var(--text);
+}
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--syn-comment);
+  font-style: italic;
+}
+.token.keyword,
+.token.boolean,
+.token.null,
+.token.nil,
+.token.important {
+  color: var(--syn-keyword);
+}
+.token.string,
+.token.char,
+.token.template-string,
+.token.attr-value,
+.token.regex {
+  color: var(--syn-string);
+}
+.token.number,
+.token.constant {
+  color: var(--syn-number);
+}
+.token.function,
+.token.method {
+  color: var(--syn-function);
+}
+.token.class-name,
+.token.builtin {
+  color: var(--syn-class);
+}
+.token.tag,
+.token.selector {
+  color: var(--syn-tag);
+}
+.token.attr-name {
+  color: var(--syn-attr);
+}
+.token.property,
+.token.parameter,
+.token.literal-property {
+  color: var(--syn-property);
+}
+.token.punctuation,
+.token.operator,
+.token.arrow {
+  color: var(--syn-punct);
+}
+.token.tag .token.punctuation,
+.token.attr-value .token.punctuation {
+  color: inherit;
+}
+.token.template-punctuation,
+.token.interpolation-punctuation {
+  color: var(--syn-keyword);
+}
+
+.file-list .meta {
+  margin: 0;
+}

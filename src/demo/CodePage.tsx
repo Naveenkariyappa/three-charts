@@ -1,9 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { COMPONENT, EXAMPLES, chartFile, jsSnippet, jsxSnippet, tsSnippet, tsxSnippet, type Example } from './examples';
 import { LIVE_SNIPPETS } from './LiveChart';
 import { CustomPanel, CustomPreview } from './Customizer';
 import { PAGES } from './Sidebar';
 import { DEFAULT_CUSTOM, customOptions, mergeProps, type Custom } from './customize';
+import { highlight } from './highlight';
 import { zip } from './zip';
 
 /**
@@ -103,6 +104,8 @@ export function CodeBlock({ code, file, collapsible = false, downloadable = fals
   const [open, setOpen] = useState(false);
   const lines = code.split('\n').length;
   const clipped = collapsible && !open && lines > PREVIEW_LINES;
+  const shown = clipped ? code.split('\n').slice(0, PREVIEW_LINES).join('\n') : code;
+  const html = useMemo(() => highlight(shown, file), [shown, file]);
   const copy = async () => {
     await navigator.clipboard.writeText(code);
     setCopied(true);
@@ -127,7 +130,7 @@ export function CodeBlock({ code, file, collapsible = false, downloadable = fals
         </span>
       </div>
       <pre className={clipped ? 'clipped' : undefined}>
-        <code>{clipped ? code.split('\n').slice(0, PREVIEW_LINES).join('\n') : code}</code>
+        <code dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
       {collapsible && lines > PREVIEW_LINES && (
         <button className="expand" onClick={() => setOpen(!open)}>
