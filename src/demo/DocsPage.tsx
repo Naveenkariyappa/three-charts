@@ -1,8 +1,11 @@
-import { CodeBlock } from './CodePage';
+import { CodeBlock, FlavourTabs, useStored, type Flavour } from './CodePage';
+import { DOC_EXAMPLES } from './docsExamples';
 
 /** The user guide: how to take a chart from this site into your own project. Mirrors the README. */
 export function DocsPage() {
   const site = new URL(import.meta.env.BASE_URL, location.href).href.replace(/\/$/, '');
+  const [flavour, setFlavour] = useStored<Flavour>('tc-flavour', 'react-ts');
+  const example = DOC_EXAMPLES[flavour];
   return (
     <article className="docs">
       <h1>Using the charts in your project</h1>
@@ -65,36 +68,19 @@ export function DocsPage() {
       </p>
 
       <h2>3. Use it</h2>
-      <h3>React</h3>
-      <CodeBlock
-        file="Revenue.tsx"
-        code={`import { BarChart } from '@/components/charts/bar-chart';
-
-export function Revenue() {
-  return (
-    <BarChart
-      height={320}
-      categories={['Q1', 'Q2', 'Q3', 'Q4']}
-      series={[{ name: 'Revenue', data: [42, 51, 48, 63] }]}
-    />
-  );
-}
-`}
-      />
-      <h3>JavaScript / TypeScript</h3>
-      <CodeBlock
-        file="main.js"
-        code={`import { createBarChart } from './charts/bar-chart.js';
-
-const chart = createBarChart(document.getElementById('chart'), {
-  categories: ['Q1', 'Q2', 'Q3', 'Q4'],
-  series: [{ name: 'Revenue', data: [42, 51, 48, 63] }],
-});
-
-chart.update({ series: [{ name: 'Revenue', data: [50, 55, 60, 70] }] }); // new data
-chart.destroy(); // when removing it
-`}
-      />
+      <FlavourTabs flavour={flavour} setFlavour={setFlavour} />
+      <CodeBlock file={example.file} code={example.code} />
+      {flavour === 'react-ts' && (
+        <p className="meta">
+          Every chart exports <code>&lt;Name&gt;Props</code> (its options plus <code>height</code>, <code>className</code>, <code>style</code>) and{' '}
+          <code>&lt;Name&gt;Handle</code> (the ref: <code>update</code>, <code>resetView</code>, <code>toPNG</code>, <code>chart</code>).
+        </p>
+      )}
+      {flavour === 'ts' && (
+        <p className="meta">
+          Every chart file exports its options type (e.g. <code>BarOptions</code>), its class, and a <code>create&lt;Name&gt;()</code> function.
+        </p>
+      )}
       <p className="meta">Every chart page has a complete example with realistic data for that chart.</p>
 
       <h2>Good to know</h2>

@@ -10,7 +10,7 @@ import { zip } from './zip';
  * once, by one download or one command. Everything is generated from src/core
  * by scripts/registry.mjs and served from /registry.
  */
-type Flavour = 'react-ts' | 'react-js' | 'ts' | 'js';
+export type Flavour = 'react-ts' | 'react-js' | 'ts' | 'js';
 
 /** `single`: a one-file build exists (TypeScript flavours only). */
 const FLAVOURS: Record<Flavour, { label: string; ext: string; packExt: string; dir: string; react: boolean; single: boolean }> = {
@@ -34,7 +34,7 @@ interface Manifest {
 const BASE = import.meta.env.BASE_URL;
 const origin = () => new URL(BASE, location.href).href;
 
-function useStored<T extends string>(key: string, fallback: T): [T, (v: T) => void] {
+export function useStored<T extends string>(key: string, fallback: T): [T, (v: T) => void] {
   const [v, setV] = useState<T>(() => {
     try {
       return (localStorage.getItem(key) as T) || fallback;
@@ -152,7 +152,7 @@ function Tabs<T extends string>({ value, options, onChange, label }: { value: T;
   );
 }
 
-function FlavourTabs({ flavour, setFlavour }: { flavour: Flavour; setFlavour: (f: Flavour) => void }) {
+export function FlavourTabs({ flavour, setFlavour }: { flavour: Flavour; setFlavour: (f: Flavour) => void }) {
   return <Tabs label="Language" value={flavour} onChange={setFlavour} options={(Object.keys(FLAVOURS) as Flavour[]).map((f) => [f, FLAVOURS[f].label])} />;
 }
 
