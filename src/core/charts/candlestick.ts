@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { CartesianChart } from '../cartesian';
-import type { Hit, LegendItem } from '../base';
+import type { Hit, LabelPool, LegendItem } from '../base';
 import { createRects } from '../marks';
-import { MarkBuilder, applyProgress } from '../markchart';
+import { MarkBuilder, applyProgress, type WorldLabel } from '../markchart';
 import { formatNumber, nearestIndex, niceDomain } from '../scale';
 import { ema, rollingStd, sma } from '../stats';
 import type { CandlestickOptions, Indicator, Numbers } from '../types';
@@ -60,6 +60,7 @@ export class CandlestickChart<O extends Opts = Opts> extends CartesianChart<O> {
   private hover: { px: number; py: number; color: string } | null = null;
   private overlays: Overlay[] = [];
   private overlayGroup: THREE.Group | null = null;
+  private overlayLabels: WorldLabel[] = [];
 
   constructor(container: HTMLElement, options: O) {
     super(container, options);
@@ -121,6 +122,8 @@ export class CandlestickChart<O extends Opts = Opts> extends CartesianChart<O> {
       }
     }
     const spacing = this.spacing();
+    // Room above the highs for event flags.
+    if (o.events?.length) hi += (hi - lo) * 0.1;
     const [y0, y1] = niceDomain(lo, hi);
     this.full = { x0: this.xAt(0) - spacing, x1: this.xAt(n - 1) + spacing * this.rightRoom(), y0, y1 };
   }
@@ -181,8 +184,10 @@ export class CandlestickChart<O extends Opts = Opts> extends CartesianChart<O> {
 
   private buildOverlays() {
     this.overlayGroup = null;
+    this.overlayLabels = [];
     const shown = this.overlays.filter((ov) => !this.hidden.has(ov.name));
-    if (!shown.length) return;
+    const events = this.opts.events ?? [];
+    if (!shown.length && !events.length) return;
     const o = this.origin;
     const b = new MarkBuilder(o.x, o.y, false, this.theme.surface);
     const path = (v: Float64Array) => {
@@ -200,8 +205,29 @@ export class CandlestickChart<O extends Opts = Opts> extends CartesianChart<O> {
       }
       b.line(path(ov.mid), ov.color, 1.5);
     }
+    // Event flags: a short pole above the candle's high with a lettered square.
+    const pad = (this.full.y1 - this.full.y0) * 0.04;
+    for (const ev of events) {
+      const i = nearestIndex(this.xs, ev.x);
+      if (i < 0) continue;
+      const x = this.xAt(i);
+      const y = this.d.high[i] + pad;
+      b.seg(x, this.d.high[i], x, y, this.theme.textMuted, 1);
+      b.point(x, y + pad * 0.4, this.theme.textPrimary, 14, 'square');
+      b.text(ev.label.slice(0, 2), x, y + pad * 0.4, 0.5, 0.5, true, { color: this.theme.surface, size: 9, weight: 700 });
+    }
     this.overlayGroup = b.build(this.dpr, this.theme.surface);
+    this.overlayLabels = b.labels;
     this.scene.add(this.overlayGroup);
+  }
+
+  protected addLabels(L: LabelPool) {
+    const p = this.plot;
+    for (const l of this.overlayLabels) {
+      const [x, y] = this.toPx(l.x, l.y);
+      if (x < p.left - 2 || x > p.left + p.width + 2 || y < p.top - 2 || y > p.top + p.height + 2) continue;
+      L.add(l.text, x, y, l.ax, l.ay, l.strong, l.style);
+    }
   }
 
   protected onProgress() {
@@ -249,6 +275,9 @@ export class CandlestickChart<O extends Opts = Opts> extends CartesianChart<O> {
         { label: `${ha}Low`, value: this.formatY(low[i]) },
         { label: `${ha}Close`, value: this.formatY(close[i]), color },
         { label: 'Change', value: `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%` },
+        ...(this.opts.events ?? [])
+          .filter((ev) => nearestIndex(this.xs, ev.x) === i)
+          .map((ev) => ({ label: `⚑ ${ev.label}`, value: ev.text ?? '' })),
         ...this.overlays
           .filter((ov) => !this.hidden.has(ov.name) && ov.mid[i] === ov.mid[i])
           .map((ov) => ({

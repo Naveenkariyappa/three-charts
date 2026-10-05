@@ -850,7 +850,292 @@ export interface RocCurveOptions extends CartesianOptions {
   series: RocSeries[];
 }
 
+// ---- Added: more types found across other libraries -------------------------------------
+
+export interface BaselineOptions extends CartesianOptions {
+  type: 'baseline';
+  /** Epoch ms or index per point (sorted). */
+  x?: Numbers;
+  y: Numbers;
+  name?: string;
+  /** Value the areas are measured from. Default: the first value. */
+  baseline?: number;
+}
+
+export interface DifferenceOptions extends CartesianOptions {
+  type: 'difference';
+  x?: Numbers;
+  /** The gap between the two is shaded in the color of whichever is higher. */
+  a: { name: string; y: Numbers };
+  b: { name: string; y: Numbers };
+}
+
+export interface DivergingBarOptions extends CartesianOptions {
+  type: 'divergingBar';
+  /** Rows, e.g. survey questions. */
+  categories: string[];
+  /** Answer levels from most negative to most positive, with a count per row. */
+  levels: { name: string; values: Numbers }[];
+  /** Index of the neutral level, split across zero. Default: the middle level when the count is odd. */
+  neutral?: number;
+  /** Show shares of each row (default) or raw counts. */
+  percent?: boolean;
+}
+
+export interface VariwideOptions extends CartesianOptions {
+  type: 'variwide';
+  /** Bar height from `value`, bar width from `width`. */
+  data: { label: string; value: number; width: number }[];
+  valueName?: string;
+  widthName?: string;
+}
+
+export interface VariablePieOptions extends CommonOptions {
+  type: 'variablePie';
+  /** Slice angle from `value`, slice radius from `z`. */
+  data: { label: string; value: number; z: number; color?: string }[];
+  valueName?: string;
+  zName?: string;
+  /** Inner radius as a fraction of the smallest slice. Default 0.3. */
+  innerRadius?: number;
+}
+
+export interface ParliamentOptions extends CommonOptions {
+  type: 'parliament';
+  /** One dot per unit of value (seats, people...). */
+  data: { label: string; value: number; color?: string }[];
+  /** Half-circle seating (default) or a grid of items. */
+  layout?: 'arc' | 'grid';
+}
+
+export interface PackedBubbleOptions extends CommonOptions {
+  type: 'packedBubble';
+  /** Circle area = value. Items with a `group` cluster together and share a color. */
+  data: { label: string; value: number; group?: string }[];
+}
+
+export interface QuadrantOptions extends CartesianOptions {
+  type: 'quadrant';
+  points: { label: string; x: number; y: number; size?: number }[];
+  /** Where the dividing lines sit. Default: the middle of each axis. */
+  xSplit?: number;
+  ySplit?: number;
+  /** Quadrant names: top-left, top-right, bottom-left, bottom-right. */
+  quadrants?: [string, string, string, string];
+}
+
+export interface StemOptions extends CartesianOptions {
+  type: 'stem';
+  series: XYSeries[];
+  /** Where stems start. Default 0. */
+  baseline?: number;
+}
+
+export interface JumpLineOptions extends CartesianOptions {
+  type: 'jumpLine';
+  categories: string[];
+  /** One flat tick per category; no connecting lines. */
+  series: BarSeries[];
+}
+
+export interface DotHistogramOptions extends CartesianOptions {
+  type: 'dotHistogram';
+  /** Each value is one stacked dot (Wilkinson dot plot). */
+  values: Numbers;
+  name?: string;
+  /** Bin width in data units. Default: about 30 bins. */
+  binWidth?: number;
+}
+
+export interface WinLossOptions extends CommonOptions {
+  type: 'winLoss';
+  /** Positive = win, negative = loss, 0 = draw. */
+  values: Numbers;
+  labels?: string[];
+}
+
+export interface AreaBumpOptions extends CartesianOptions {
+  type: 'areaBump';
+  /** Time points. */
+  categories: string[];
+  /** Value per time point; bands are stacked by rank at each point, thickness = value. */
+  series: BarSeries[];
+}
+
+export interface SmallMultiplesOptions extends CommonOptions {
+  type: 'smallMultiples';
+  /** One panel per series. */
+  series: XYSeries[];
+  /** Panels per row. Default: as many as fit. */
+  columns?: number;
+  /** Default 'area'. */
+  mark?: 'line' | 'area' | 'bar';
+  /** Same y scale in every panel (default), so panels compare honestly. */
+  sharedScale?: boolean;
+}
+
+export interface NavigatorOptions extends CartesianOptions {
+  type: 'navigator';
+  /** Overview series (usually the same data as the main chart). */
+  x?: Numbers;
+  y: Numbers;
+  name?: string;
+  /** Charts with this sync key follow the brush. */
+  sync: string;
+}
+
+export interface WindBarbOptions extends CartesianOptions {
+  type: 'windBarb';
+  /** Epoch ms or index per reading. */
+  x?: Numbers;
+  /** Wind speed in knots. */
+  speed: Numbers;
+  /** Direction the wind blows from, degrees (0 = north, 90 = east). */
+  direction: Numbers;
+}
+
+export interface RadialTreeOptions extends CommonOptions {
+  type: 'radialTree';
+  data: TreeDatum;
+}
+
+export interface EdgeBundlingOptions extends CommonOptions {
+  type: 'edgeBundling';
+  /** Leaves are the nodes, placed on a circle; inner levels group them. */
+  data: TreeDatum;
+  /** Connections between leaf names. */
+  links: { source: string; target: string }[];
+  /** 0 = straight lines, 1 = tightly bundled. Default 0.85. */
+  bundle?: number;
+}
+
+export interface TileMapOptions extends CommonOptions {
+  type: 'tileMap';
+  /** One equal-size tile per region at a grid position (row 0 at the top). */
+  tiles: { id: string; label?: string; col: number; row: number; value: number }[];
+  shape?: 'square' | 'hex';
+  scale?: 'sequential' | 'diverging';
+  center?: number;
+}
+
+export interface SpikeMapOptions extends GeoBase {
+  type: 'spikeMap';
+  points: { lon: number; lat: number; value: number; label?: string }[];
+  /** Tallest spike in CSS px. Default 80. */
+  maxHeight?: number;
+}
+
+export interface DensityMapOptions extends GeoBase {
+  type: 'densityMap';
+  lon: Numbers;
+  lat: Numbers;
+  weight?: Numbers;
+  /** Smoothing radius in CSS px. Default 10. */
+  radius?: number;
+}
+
+export interface Map3DOptions extends Chart3DOptions {
+  type: 'map3d';
+  topology: Topology;
+  object?: string;
+  exclude?: string[];
+  /** Keyed by feature name or id; sets each region's height and color. */
+  values: Record<string, number>;
+  projection?: 'naturalEarth' | 'equirectangular' | 'mercator';
+}
+
+export interface LineBreakOptions extends CartesianOptions {
+  type: 'lineBreak';
+  x?: Numbers;
+  close: Numbers;
+  /** Lines a reversal must break. Default 3. */
+  lines?: number;
+}
+
+export interface HollowCandleOptions extends Omit<CandlestickOptions, 'type'> {
+  type: 'hollowCandle';
+}
+
+export interface HLCOptions extends Omit<CandlestickOptions, 'type' | 'open'> {
+  type: 'hlc';
+  open?: Numbers;
+}
+
+export interface LiquidGaugeOptions extends CommonOptions {
+  type: 'liquidGauge';
+  value: number;
+  min?: number;
+  max?: number;
+  label?: string;
+  format?: (v: number) => string;
+  /** Default 'circle'. */
+  shape?: 'circle' | 'tank';
+}
+
+export interface RadialHeatmapOptions extends CommonOptions {
+  type: 'radialHeatmap';
+  /** Around the circle, e.g. hours. */
+  angles: string[];
+  /** Rings from the center out, e.g. weekdays. */
+  rings: string[];
+  /** Row-major: rings.length x angles.length. */
+  data: Numbers;
+}
+
+export interface Histogram2DOptions extends CartesianOptions {
+  type: 'histogram2d';
+  x: Numbers;
+  y: Numbers;
+  /** Bins along x and y. Default [40, 30]. */
+  bins?: [number, number];
+}
+
+export interface StreamlineOptions extends CartesianOptions {
+  type: 'streamline';
+  /** Vector field on a grid: row-major u (x) and v (y), rows x cols, row 0 at the bottom. */
+  cols: number;
+  rows: number;
+  u: Numbers;
+  v: Numbers;
+  /** Data range the grid covers. Default 0..cols-1, 0..rows-1. */
+  x0?: number;
+  x1?: number;
+  y0?: number;
+  y1?: number;
+  /** Distance between streamlines in CSS px. Default 22. */
+  spacing?: number;
+}
+
 export type ExtraOptions =
+  | BaselineOptions
+  | DifferenceOptions
+  | DivergingBarOptions
+  | VariwideOptions
+  | VariablePieOptions
+  | ParliamentOptions
+  | PackedBubbleOptions
+  | QuadrantOptions
+  | StemOptions
+  | JumpLineOptions
+  | DotHistogramOptions
+  | WinLossOptions
+  | AreaBumpOptions
+  | SmallMultiplesOptions
+  | NavigatorOptions
+  | WindBarbOptions
+  | RadialTreeOptions
+  | EdgeBundlingOptions
+  | TileMapOptions
+  | SpikeMapOptions
+  | DensityMapOptions
+  | Map3DOptions
+  | LineBreakOptions
+  | HollowCandleOptions
+  | HLCOptions
+  | LiquidGaugeOptions
+  | RadialHeatmapOptions
+  | Histogram2DOptions
+  | StreamlineOptions
   | WordCloudOptions
   | ParetoOptions
   | ErrorBarOptions

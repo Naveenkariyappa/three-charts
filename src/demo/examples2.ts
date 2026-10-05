@@ -147,6 +147,19 @@ const populations = `const people = {
   'Kazakhstan': [20, 58], 'Chile': [20, 88],
 };`;
 
+// Seeded walk shared by the navigator and the chart it drives, so both show the same data.
+const seededWalk = (ts: boolean) => `let seed = 7;
+const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const n = 2000;
+const x${ts ? ': number[]' : ''} = [];
+const y${ts ? ': number[]' : ''} = [];
+let v = 100;
+for (let i = 0; i < n; i++) {
+  v += (rand() - 0.49) * 2;
+  x.push(Date.UTC(2021, 0, 1) + i * 86_400_000);
+  y.push(v);
+}`;
+
 export const GROUP_BY_TYPE: Record<ChartType, string> = {
   bar: 'Comparison', lollipop: 'Comparison', dotplot: 'Comparison', dumbbell: 'Comparison', rangeBar: 'Comparison', bullet: 'Comparison', waterfall: 'Comparison', marimekko: 'Comparison', pictograph: 'Comparison', radialBar: 'Comparison', radar: 'Comparison',
   line: 'Trend', area: 'Trend', rangeArea: 'Trend', slope: 'Trend', bump: 'Trend', horizon: 'Trend', sparkline: 'Trend', radialLine: 'Trend',
@@ -161,6 +174,7 @@ export const GROUP_BY_TYPE: Record<ChartType, string> = {
   choropleth: 'Geo', bubbleMap: 'Geo', flowMap: 'Geo', hexbinMap: 'Geo', globe: 'Geo',
   bar3d: '3D & scientific', scatter3d: '3D & scientific', line3d: '3D & scientific', surface3d: '3D & scientific', mesh3d: '3D & scientific', isosurface: '3D & scientific', vectorField: '3D & scientific', vectorField3d: '3D & scientific', contour: '3D & scientific', spectrogram: '3D & scientific', waterfall3d: '3D & scientific', ternary: '3D & scientific', smith: '3D & scientific',
   wordCloud: 'Comparison', pareto: 'Comparison', populationPyramid: 'Comparison', confidenceBand: 'Trend', errorBar: 'Distribution', mindMap: 'Hierarchy', voronoi: 'Relationship', polarScatter: 'Relationship', confusionMatrix: 'Machine learning', rocCurve: 'Machine learning', macd: 'Financial', rsi: 'Financial', cartogram: 'Geo', dotDensity: 'Geo',
+  baseline: 'Trend', difference: 'Trend', areaBump: 'Trend', smallMultiples: 'Trend', navigator: 'Trend', windBarb: '3D & scientific', divergingBar: 'Comparison', variwide: 'Comparison', packedBubble: 'Part-to-whole', quadrant: 'Relationship', stem: 'Trend', jumpLine: 'Comparison', dotHistogram: 'Distribution', winLoss: 'KPI', variablePie: 'Part-to-whole', parliament: 'Part-to-whole', radialTree: 'Hierarchy', edgeBundling: 'Network', radialHeatmap: 'Relationship', liquidGauge: 'KPI', tileMap: 'Geo', spikeMap: 'Geo', densityMap: 'Geo', map3d: 'Geo', lineBreak: 'Financial', hollowCandle: 'Financial', hlc: 'Financial', histogram2d: 'Relationship', streamline: '3D & scientific',
 };
 
 export const GROUPS = ['Comparison', 'Trend', 'Distribution', 'Part-to-whole', 'Hierarchy', 'Relationship', 'Network', 'Flow & time', 'KPI', 'Machine learning', 'Financial', 'Geo', '3D & scientific'];
@@ -1983,5 +1997,567 @@ values,
 dotValue: 500_000,
 exclude: ['Antarctica'],`,
     height: 380,
+  },
+  // ---- More types found across other libraries ---------------------------------------------------
+  {
+    id: 'baseline',
+    type: 'baseline',
+    title: 'Baseline',
+    blurb: 'Above the opening price in one color, below in the other.',
+    dim: '2D',
+    setup: walk('y', 300, 100, 3),
+    props: `y,
+baseline: 100,
+name: 'Price',
+yAxis: { label: 'Price ($)' },`,
+  },
+  {
+    id: 'difference',
+    type: 'difference',
+    title: 'Difference chart',
+    blurb: 'The gap between two series, shaded by which one is higher.',
+    dim: '2D',
+    setup: `const day = (i) => (2 * Math.PI * i) / 365;
+const rome = Array.from({ length: 365 }, (_, i) => 16 - 9 * Math.cos(day(i - 20)) + (Math.random() - 0.5) * 3);
+const london = Array.from({ length: 365 }, (_, i) => 12 - 7 * Math.cos(day(i - 25)) + (Math.random() - 0.5) * 3 + (i > 150 && i < 230 ? 3 : 0));`,
+    setupTs: `const day = (i: number) => (2 * Math.PI * i) / 365;
+const rome = Array.from({ length: 365 }, (_, i) => 16 - 9 * Math.cos(day(i - 20)) + (Math.random() - 0.5) * 3);
+const london = Array.from({ length: 365 }, (_, i) => 12 - 7 * Math.cos(day(i - 25)) + (Math.random() - 0.5) * 3 + (i > 150 && i < 230 ? 3 : 0));`,
+    props: `a: { name: 'Rome', y: rome },
+b: { name: 'London', y: london },
+xAxis: { label: 'Day of year' },
+yAxis: { label: 'Temperature (°C)' },`,
+  },
+  {
+    id: 'divergingBar',
+    type: 'divergingBar',
+    title: 'Diverging stacked bar (Likert)',
+    blurb: 'Survey answers stacked out from neutral: disagreement left, agreement right.',
+    dim: '2D',
+    setup: ``,
+    props: `categories: ['The app is easy to use', 'Support answers quickly', 'Pricing is fair', 'I would recommend it', 'New features are useful'],
+levels: [
+  { name: 'Strongly disagree', values: [12, 30, 61, 18, 9] },
+  { name: 'Disagree', values: [25, 48, 90, 30, 22] },
+  { name: 'Neutral', values: [60, 72, 80, 55, 70] },
+  { name: 'Agree', values: [160, 110, 52, 140, 150] },
+  { name: 'Strongly agree', values: [143, 40, 17, 157, 149] },
+],`,
+    height: 320,
+  },
+  {
+    id: 'variwide',
+    type: 'variwide',
+    title: 'Variwide bar',
+    blurb: 'Height is hourly labor cost; width is GDP (illustrative values).',
+    dim: '2D',
+    setup: ``,
+    props: `data: [
+  { label: 'Norway', value: 50.2, width: 335 },
+  { label: 'Denmark', value: 42.0, width: 214 },
+  { label: 'Belgium', value: 39.2, width: 394 },
+  { label: 'Sweden', value: 38.0, width: 437 },
+  { label: 'France', value: 35.6, width: 2276 },
+  { label: 'Germany', value: 34.5, width: 3108 },
+  { label: 'Italy', value: 27.8, width: 1717 },
+  { label: 'Spain', value: 21.3, width: 1123 },
+  { label: 'Poland', value: 9.4, width: 450 },
+],
+valueName: 'Labor cost (€/h)',
+widthName: 'GDP (€bn)',
+xAxis: { label: 'GDP (€bn)' },
+yAxis: { label: '€ per hour' },`,
+  },
+  {
+    id: 'variablePie',
+    type: 'variablePie',
+    title: 'Variable-radius pie',
+    blurb: 'Angle is land area; slice length is population density (approximate).',
+    dim: '2D',
+    setup: ``,
+    props: `valueName: 'Area (km²)',
+zName: 'People per km²',
+data: [
+  { label: 'Spain', value: 505992, z: 94 },
+  { label: 'France', value: 551695, z: 118 },
+  { label: 'Poland', value: 312679, z: 122 },
+  { label: 'Czechia', value: 78865, z: 137 },
+  { label: 'Italy', value: 301340, z: 195 },
+  { label: 'Switzerland', value: 41284, z: 219 },
+  { label: 'Germany', value: 357022, z: 235 },
+],`,
+    height: 340,
+  },
+  {
+    id: 'parliament',
+    type: 'parliament',
+    title: 'Parliament (item) chart',
+    blurb: 'One dot per seat, each party a wedge of the chamber.',
+    dim: '2D',
+    setup: ``,
+    props: `data: [
+  { label: 'Greens', value: 38 },
+  { label: 'Social Democrats', value: 92 },
+  { label: 'Liberals', value: 41 },
+  { label: 'Christian Democrats', value: 104 },
+  { label: 'Conservatives', value: 25 },
+],`,
+    height: 300,
+  },
+  {
+    id: 'packedBubble',
+    type: 'packedBubble',
+    title: 'Packed bubble',
+    blurb: 'Circle area is CO₂ emissions; countries cluster by continent (approximate Mt).',
+    dim: '2D',
+    setup: ``,
+    props: `data: [
+  { label: 'China', value: 11400, group: 'Asia' },
+  { label: 'India', value: 2800, group: 'Asia' },
+  { label: 'Japan', value: 1050, group: 'Asia' },
+  { label: 'Indonesia', value: 690, group: 'Asia' },
+  { label: 'Korea', value: 620, group: 'Asia' },
+  { label: 'USA', value: 4900, group: 'Americas' },
+  { label: 'Brazil', value: 480, group: 'Americas' },
+  { label: 'Mexico', value: 440, group: 'Americas' },
+  { label: 'Canada', value: 550, group: 'Americas' },
+  { label: 'Germany', value: 670, group: 'Europe' },
+  { label: 'UK', value: 330, group: 'Europe' },
+  { label: 'France', value: 300, group: 'Europe' },
+  { label: 'Italy', value: 320, group: 'Europe' },
+  { label: 'Poland', value: 290, group: 'Europe' },
+  { label: 'South Africa', value: 400, group: 'Africa' },
+  { label: 'Egypt', value: 250, group: 'Africa' },
+  { label: 'Nigeria', value: 130, group: 'Africa' },
+],`,
+    height: 360,
+  },
+  {
+    id: 'quadrant',
+    type: 'quadrant',
+    title: 'Quadrant chart',
+    blurb: 'Projects by effort and impact, split into four action groups.',
+    dim: '2D',
+    setup: ``,
+    props: `points: [
+  { label: 'SSO login', x: 2, y: 8.5 }, { label: 'Dark mode', x: 3, y: 5 }, { label: 'Offline sync', x: 8.5, y: 8 },
+  { label: 'New onboarding', x: 4.5, y: 7.2 }, { label: 'Billing rewrite', x: 9, y: 6 }, { label: 'Icon refresh', x: 2.2, y: 2.5 },
+  { label: 'Data export', x: 3.6, y: 6.4 }, { label: 'Plugin API', x: 7.5, y: 3.2 }, { label: 'Search v2', x: 6.2, y: 8.8 },
+],
+xSplit: 5,
+ySplit: 5,
+quadrants: ['Quick wins', 'Major projects', 'Fill-ins', 'Thankless tasks'],
+xAxis: { label: 'Effort', min: 0, max: 10 },
+yAxis: { label: 'Impact', min: 0, max: 10 },`,
+    height: 360,
+  },
+  {
+    id: 'stem',
+    type: 'stem',
+    title: 'Stem (stick) chart',
+    blurb: 'Discrete samples as stems from zero: a decaying oscillation.',
+    dim: '2D',
+    setup: `const y = Array.from({ length: 64 }, (_, i) => Math.sin(i / 2.2) * Math.exp(-i / 28));`,
+    props: `series: [{ name: 'Response', y }],
+xAxis: { label: 'Sample' },`,
+  },
+  {
+    id: 'jumpLine',
+    type: 'jumpLine',
+    title: 'Jump line',
+    blurb: 'Flat ticks per category: plan vs actual without implying a trend.',
+    dim: '2D',
+    setup: ``,
+    props: `categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+series: [
+  { name: 'Target', data: [40, 42, 44, 46, 48, 50, 52, 54] },
+  { name: 'Actual', data: [38, 45, 41, 49, 47, 55, 50, 58] },
+],
+yAxis: { label: 'Orders (k)' },`,
+  },
+  {
+    id: 'dotHistogram',
+    type: 'dotHistogram',
+    title: 'Dot histogram (Wilkinson)',
+    blurb: 'Every observation is a dot, stacked in its bin.',
+    dim: '2D',
+    setup: `const values = Float32Array.from({ length: 220 }, () => 170 + 9 * Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random()));`,
+    props: `values,
+name: 'People',
+binWidth: 2,
+xAxis: { label: 'Height (cm)' },`,
+  },
+  {
+    id: 'winLoss',
+    type: 'winLoss',
+    title: 'Win / loss',
+    blurb: 'A season of results at a glance: up for wins, down for losses.',
+    dim: '2D',
+    setup: `const values = [1, 1, -1, 1, 0, 1, 1, -1, -1, 1, 1, 1, -1, 1, 0, 1, -1, 1, 1, 1, 1, -1, 1, 1, 0, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1];`,
+    props: `values,`,
+    height: 140,
+  },
+  {
+    id: 'areaBump',
+    type: 'areaBump',
+    title: 'Area bump',
+    blurb: 'Rank over time, with band thickness showing each value.',
+    dim: '2D',
+    setup: ``,
+    props: `categories: ['2019', '2020', '2021', '2022', '2023', '2024'],
+series: [
+  { name: 'JavaScript', data: [68, 65, 65, 65, 63, 62] },
+  { name: 'Python', data: [42, 44, 48, 48, 49, 51] },
+  { name: 'TypeScript', data: [21, 25, 30, 34, 38, 38] },
+  { name: 'Java', data: [41, 40, 35, 33, 30, 30] },
+  { name: 'Go', data: [8, 9, 10, 11, 13, 14] },
+],`,
+    height: 340,
+  },
+  {
+    id: 'smallMultiples',
+    type: 'smallMultiples',
+    title: 'Small multiples',
+    blurb: 'One panel per region on a shared scale, instead of eight tangled lines.',
+    dim: '2D',
+    setup: `const months = 36;
+const region = (name, level, growth) => ({
+  name,
+  y: Array.from({ length: months }, (_, i) => level + growth * i + 6 * Math.sin(i / 2) + Math.random() * 4),
+});`,
+    setupTs: `const months = 36;
+const region = (name: string, level: number, growth: number) => ({
+  name,
+  y: Array.from({ length: months }, (_, i) => level + growth * i + 6 * Math.sin(i / 2) + Math.random() * 4),
+});`,
+    props: `series: [
+  region('North', 40, 0.9), region('South', 55, 0.2), region('East', 30, 1.4), region('West', 60, -0.3),
+  region('Central', 45, 0.6), region('Coast', 35, 1.1), region('Islands', 20, 0.4), region('Mountains', 25, 0.1),
+],
+mark: 'area',`,
+    height: 360,
+  },
+  {
+    id: 'navigator-line',
+    type: 'line',
+    title: 'Range navigator: main chart',
+    blurb: 'Five years of daily values. Use the navigator below to pick the window.',
+    dim: '2D',
+    setup: seededWalk(false),
+    setupTs: seededWalk(true),
+    props: `series: [{ name: 'Index', x, y }],
+xAxis: { type: 'time' },
+sync: 'overview',`,
+  },
+  {
+    id: 'navigator',
+    type: 'navigator',
+    title: 'Range navigator',
+    blurb: 'Drag or resize the window; the chart above follows (same sync key).',
+    dim: '2D',
+    setup: seededWalk(false),
+    setupTs: seededWalk(true),
+    props: `x,
+y,
+xAxis: { type: 'time' },
+sync: 'overview',`,
+    height: 110,
+  },
+  {
+    id: 'windBarb',
+    type: 'windBarb',
+    title: 'Wind barbs',
+    blurb: 'Speed over two days with barbs for direction and strength (knots).',
+    dim: '2D',
+    setup: `const hours = 48;
+const x = Array.from({ length: hours }, (_, i) => Date.UTC(2026, 2, 1) + i * 3_600_000);
+const speed = Array.from({ length: hours }, (_, i) => Math.max(0, 14 + 12 * Math.sin(i / 7) + (Math.random() - 0.5) * 6));
+const direction = Array.from({ length: hours }, (_, i) => (200 + i * 3 + (Math.random() - 0.5) * 20) % 360);`,
+    props: `x,
+speed,
+direction,
+xAxis: { type: 'time' },
+yAxis: { label: 'Wind speed (kn)' },`,
+  },
+  {
+    id: 'radialTree',
+    type: 'radialTree',
+    title: 'Radial tree',
+    blurb: 'A hierarchy around a circle: root in the middle, leaves on the rim.',
+    dim: '2D',
+    setup: treeData(false),
+    setupTs: treeData(true),
+    props: `data,`,
+    height: 420,
+  },
+  {
+    id: 'edgeBundling',
+    type: 'edgeBundling',
+    title: 'Hierarchical edge bundling',
+    blurb: 'Imports between modules, bundled along the package tree. Hover a module.',
+    dim: '2D',
+    setup: `let seed = 3;
+const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const pkgs = { core: 9, ui: 10, data: 8, net: 6, utils: 7 };
+const data = {
+  name: 'app',
+  children: Object.entries(pkgs).map(([pkg, n]) => ({ name: pkg, children: Array.from({ length: n }, (_, i) => ({ name: pkg + '.' + (i + 1) })) })),
+};
+const names = data.children.flatMap((p) => p.children.map((c) => c.name));
+const links = [];
+for (const source of names) {
+  const k = 1 + Math.floor(rand() * 3);
+  for (let j = 0; j < k; j++) links.push({ source, target: names[Math.floor(rand() * names.length)] });
+}`,
+    setupTs: `let seed = 3;
+const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const pkgs = { core: 9, ui: 10, data: 8, net: 6, utils: 7 };
+const data = {
+  name: 'app',
+  children: Object.entries(pkgs).map(([pkg, n]) => ({ name: pkg, children: Array.from({ length: n }, (_, i) => ({ name: pkg + '.' + (i + 1) })) })),
+};
+const names = data.children.flatMap((p) => p.children.map((c) => c.name));
+const links: { source: string; target: string }[] = [];
+for (const source of names) {
+  const k = 1 + Math.floor(rand() * 3);
+  for (let j = 0; j < k; j++) links.push({ source, target: names[Math.floor(rand() * names.length)] });
+}`,
+    props: `data,
+links,
+bundle: 0.85,`,
+    height: 420,
+  },
+  {
+    id: 'radialHeatmap',
+    type: 'radialHeatmap',
+    title: 'Radial heatmap',
+    blurb: 'Site visits by hour (around) and weekday (rings).',
+    dim: '2D',
+    setup: `const hours = Array.from({ length: 24 }, (_, h) => String(h));
+const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const data = new Float32Array(days.length * 24);
+days.forEach((_, d) => {
+  for (let h = 0; h < 24; h++) {
+    const work = d < 5 ? Math.exp(-((h - 11) ** 2) / 10) + 0.8 * Math.exp(-((h - 15) ** 2) / 8) : 0.5 * Math.exp(-((h - 14) ** 2) / 20);
+    data[d * 24 + h] = Math.round(200 * work + 30 * Math.exp(-((h - 21) ** 2) / 6) + Math.random() * 15);
+  }
+});`,
+    props: `angles: hours,
+rings: days,
+data,`,
+    height: 380,
+  },
+  {
+    id: 'liquidGauge',
+    type: 'liquidGauge',
+    title: 'Liquid fill gauge',
+    blurb: 'A single level, shown as liquid in a circle (or tank).',
+    dim: '2D',
+    setup: ``,
+    props: `value: 68,
+label: 'Reservoir level',`,
+    height: 240,
+  },
+  {
+    id: 'tileMap',
+    type: 'tileMap',
+    title: 'Tile map',
+    blurb: 'One equal hex per country, so small countries count as much as large ones (illustrative values).',
+    dim: '2D',
+    setup: ``,
+    props: `shape: 'hex',
+tiles: [
+  { id: 'IS', label: 'Iceland', col: 1, row: 0, value: 86 }, { id: 'NO', label: 'Norway', col: 5, row: 0, value: 76 },
+  { id: 'SE', label: 'Sweden', col: 6, row: 0, value: 66 }, { id: 'FI', label: 'Finland', col: 7, row: 0, value: 47 },
+  { id: 'IE', label: 'Ireland', col: 2, row: 1, value: 13 }, { id: 'GB', label: 'United Kingdom', col: 3, row: 1, value: 14 },
+  { id: 'DK', label: 'Denmark', col: 5, row: 1, value: 44 }, { id: 'EE', label: 'Estonia', col: 7, row: 1, value: 38 },
+  { id: 'NL', label: 'Netherlands', col: 4, row: 2, value: 17 }, { id: 'DE', label: 'Germany', col: 5, row: 2, value: 22 },
+  { id: 'PL', label: 'Poland', col: 6, row: 2, value: 17 }, { id: 'LT', label: 'Lithuania', col: 7, row: 2, value: 29 },
+  { id: 'BE', label: 'Belgium', col: 3, row: 3, value: 14 }, { id: 'CZ', label: 'Czechia', col: 5, row: 3, value: 18 },
+  { id: 'SK', label: 'Slovakia', col: 6, row: 3, value: 17 }, { id: 'UA', label: 'Ukraine', col: 7, row: 3, value: 9 },
+  { id: 'FR', label: 'France', col: 3, row: 4, value: 22 }, { id: 'CH', label: 'Switzerland', col: 4, row: 4, value: 28 },
+  { id: 'AT', label: 'Austria', col: 5, row: 4, value: 34 }, { id: 'HU', label: 'Hungary', col: 6, row: 4, value: 15 },
+  { id: 'RO', label: 'Romania', col: 7, row: 4, value: 24 }, { id: 'PT', label: 'Portugal', col: 1, row: 5, value: 34 },
+  { id: 'ES', label: 'Spain', col: 2, row: 5, value: 22 }, { id: 'IT', label: 'Italy', col: 4, row: 5, value: 19 },
+  { id: 'HR', label: 'Croatia', col: 5, row: 5, value: 29 }, { id: 'RS', label: 'Serbia', col: 6, row: 5, value: 21 },
+  { id: 'BG', label: 'Bulgaria', col: 7, row: 5, value: 19 }, { id: 'GR', label: 'Greece', col: 6, row: 6, value: 22 },
+],`,
+    height: 380,
+  },
+  {
+    id: 'spikeMap',
+    type: 'spikeMap',
+    title: 'Spike map',
+    blurb: 'Metro populations as spikes: height reads more precisely than bubble area.',
+    dim: '2D',
+    needsWorld: true,
+    setup: cities,
+    props: `topology: world,
+exclude: ['Antarctica'],
+points: cities,`,
+    height: 360,
+  },
+  {
+    id: 'densityMap',
+    type: 'densityMap',
+    title: 'Geo density map',
+    blurb: '20,000 points around large cities, smoothed into a heat layer.',
+    dim: '2D',
+    needsWorld: true,
+    setup: `${cities}
+const lon = new Float32Array(20000);
+const lat = new Float32Array(20000);
+for (let i = 0; i < lon.length; i++) {
+  const c = cities[i % cities.length];
+  const r = 6 * Math.sqrt(-2 * Math.log(1 - Math.random()));
+  const t = Math.random() * Math.PI * 2;
+  lon[i] = c.lon + r * Math.cos(t);
+  lat[i] = c.lat + r * 0.6 * Math.sin(t);
+}`,
+    props: `topology: world,
+exclude: ['Antarctica'],
+lon,
+lat,
+radius: 10,`,
+    height: 360,
+  },
+  {
+    id: 'map3d',
+    type: 'map3d',
+    title: '3D extruded map',
+    blurb: 'Countries raised by population. Drag to orbit, click and scroll to zoom.',
+    dim: '3D',
+    needsWorld: true,
+    setup: `${populations}
+const values = {};
+for (const [name, [millions]] of Object.entries(people)) values[name] = millions;`,
+    setupTs: `${populations}
+const values: Record<string, number> = {};
+for (const [name, [millions]] of Object.entries(people)) values[name] = millions;`,
+    props: `topology: world,
+exclude: ['Antarctica'],
+values,`,
+    height: 380,
+  },
+  {
+    id: 'lineBreak',
+    type: 'lineBreak',
+    title: 'Three line break',
+    blurb: 'A new line only on a new high or low; reversals must break three lines.',
+    dim: '2D',
+    setup: closeSeries(400),
+    props: `x,
+close,
+lines: 3,
+xAxis: { type: 'time' },`,
+  },
+  {
+    id: 'hollowCandle',
+    type: 'hollowCandle',
+    title: 'Hollow candlestick',
+    blurb: 'Hollow when the close beats the open; color by change from the previous close.',
+    dim: '2D',
+    setup: ohlcSetup(false, 90),
+    setupTs: ohlcSetup(true, 90),
+    props: `x,
+open,
+high,
+low,
+close,
+xAxis: { type: 'time' },`,
+  },
+  {
+    id: 'hlc',
+    type: 'hlc',
+    title: 'HLC bars',
+    blurb: 'High-low range with a tick at the close.',
+    dim: '2D',
+    setup: ohlcSetup(false, 90),
+    setupTs: ohlcSetup(true, 90),
+    props: `x,
+high,
+low,
+close,
+xAxis: { type: 'time' },`,
+  },
+  {
+    id: 'candlestick-events',
+    type: 'candlestick',
+    title: 'Candlestick + event flags',
+    blurb: 'events marks earnings, splits or news on the price; hover a flagged day.',
+    dim: '2D',
+    setup: ohlcSetup(false, 120),
+    setupTs: ohlcSetup(true, 120),
+    props: `x,
+open,
+high,
+low,
+close,
+xAxis: { type: 'time' },
+events: [
+  { x: x[20], label: 'E', text: 'Q4 earnings' },
+  { x: x[62], label: 'S', text: '2-for-1 split' },
+  { x: x[95], label: 'N', text: 'New CEO' },
+],`,
+  },
+  {
+    id: 'histogram2d',
+    type: 'histogram2d',
+    title: '2D histogram',
+    blurb: '50,000 correlated pairs counted in rectangular bins.',
+    dim: '2D',
+    setup: `const n = 50000;
+const x = new Float32Array(n);
+const y = new Float32Array(n);
+for (let i = 0; i < n; i++) {
+  const a = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+  const b = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random());
+  x[i] = 50 + 12 * a;
+  y[i] = 30 + 8 * (0.7 * a + 0.7 * b);
+}`,
+    props: `x,
+y,
+bins: [40, 30],
+xAxis: { label: 'Study hours' },
+yAxis: { label: 'Score' },`,
+  },
+  {
+    id: 'streamline',
+    type: 'streamline',
+    title: 'Streamlines',
+    blurb: 'Flow past a vortex: evenly spaced lines through the vector field, colored by speed.',
+    dim: '2D',
+    setup: `const cols = 50, rows = 34;
+const u = new Float32Array(cols * rows);
+const v = new Float32Array(cols * rows);
+for (let r = 0; r < rows; r++) {
+  for (let c = 0; c < cols; c++) {
+    const x = (c / (cols - 1)) * 10 - 5;
+    const y = (r / (rows - 1)) * 6.8 - 3.4;
+    const d = x * x + y * y + 0.6;
+    u[r * cols + c] = 1 - (2.5 * y) / d;
+    v[r * cols + c] = (2.5 * x) / d;
+  }
+}`,
+    props: `cols,
+rows,
+u,
+v,
+x0: -5, x1: 5, y0: -3.4, y1: 3.4,
+spacing: 20,`,
+    height: 340,
+  },
+  {
+    id: 'scatter-trendline',
+    type: 'scatter',
+    title: 'Scatter + trendline',
+    blurb: 'trendline: true adds a least-squares fit per series; hover for the equation and R².',
+    dim: '2D',
+    setup: `const x = Float32Array.from({ length: 300 }, () => Math.random() * 100);
+const y = x.map((v) => 20 + 0.6 * v + (Math.random() - 0.5) * 30);`,
+    props: `series: [{ name: 'Stores', x, y }],
+trendline: true,
+xAxis: { label: 'Ad spend ($k)' },
+yAxis: { label: 'Sales ($k)' },`,
   },
 ];

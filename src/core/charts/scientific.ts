@@ -1,8 +1,9 @@
 import type { LegendItem } from '../base';
 import { MarkChart, type MarkBuilder } from '../markchart';
+import type { Numbers } from '../types';
 import { extent, formatNumber, niceDomain } from '../scale';
 import { sampleRamp } from '../theme';
-import type { SmithOptions, TernaryOptions, VectorFieldOptions } from '../types2';
+import type { Histogram2DOptions, SmithOptions, StreamlineOptions, TernaryOptions, VectorFieldOptions } from '../types2';
 
 function rampLegend(stops: string[], lo: string, hi: string): HTMLElement {
   const el = document.createElement('div');
@@ -201,5 +202,190 @@ export class SmithChart extends MarkChart<SmithOptions> {
       b.line(pts, color, 2);
       for (let i = 0; i < pts.length; i += 2) b.point(pts[i], pts[i + 1], color, i === 0 || i === pts.length - 2 ? 8 : 5);
     });
+  }
+}
+
+// ---- 2D histogram -------------------------------------------------------------------------------------
+
+/** Counts of (x, y) pairs in rectangular bins: density of two variables without overplotting. */
+export class Histogram2DChart extends MarkChart<Histogram2DOptions> {
+  readonly type = 'histogram2d' as const;
+  private counts = new Uint32Array(0);
+  private max = 1;
+  private bx = 40;
+  private by = 30;
+
+  protected customLegend() {
+    return rampLegend(this.theme.sequential.slice(1), '0', formatNumber(this.max));
+  }
+
+  protected computeDomain() {
+    const { x, y } = this.opts;
+    [this.bx, this.by] = this.opts.bins ?? [40, 30];
+    const [x0, x1] = niceDomain(...extent(x));
+    const [y0, y1] = niceDomain(...extent(y));
+    this.full = { x0, x1, y0, y1 };
+    const counts = new Uint32Array(this.bx * this.by);
+    const n = Math.min(x.length, y.length);
+    for (let i = 0; i < n; i++) {
+      const c = Math.min(this.bx - 1, Math.floor(((x[i] - x0) / (x1 - x0)) * this.bx));
+      const r = Math.min(this.by - 1, Math.floor(((y[i] - y0) / (y1 - y0)) * this.by));
+      if (c >= 0 && r >= 0) counts[r * this.bx + c]++;
+    }
+    this.counts = counts;
+    this.max = Math.max(1, ...counts);
+  }
+
+  protected marks(b: MarkBuilder) {
+    const f = this.full;
+    const w = (f.x1 - f.x0) / this.bx;
+    const h = (f.y1 - f.y0) / this.by;
+    const ramp = this.theme.sequential.slice(1);
+    for (let r = 0; r < this.by; r++) {
+      for (let c = 0; c < this.bx; c++) {
+        const n = this.counts[r * this.bx + c];
+        if (!n) continue;
+        const color = '#' + sampleRamp(ramp, Math.sqrt(n / this.max)).getHexString();
+        const x0 = f.x0 + c * w;
+        const y0 = f.y0 + r * h;
+        b.box(x0, y0, x0 + w, y0 + h, color, 1);
+        b.region({ k: 'rect', x0, y0, x1: x0 + w, y1: y0 + h, hit: { series: 'Bin', index: r * this.bx + c, color, title: `x ${this.formatX(x0)} – ${this.formatX(x0 + w)}, y ${this.formatY(y0)} – ${this.formatY(y0 + h)}`, values: { Count: n }, rows: [{ label: 'Count', value: formatNumber(n), color }] } });
+      }
+    }
+  }
+}
+
+// ---- Streamlines --------------------------------------------------------------------------------------
+
+/** Flow lines traced through a vector field, evenly spaced, colored by speed. */
+export class StreamlineChart extends MarkChart<StreamlineOptions> {
+  readonly type = 'streamline' as const;
+  protected relayout = true;
+  protected defaultZoom: 'x' | 'xy' | false = false;
+  private maxSpeed = 1;
+
+  protected customLegend() {
+    return rampLegend(this.theme.sequential.slice(2), '0', formatNumber(this.maxSpeed));
+  }
+
+  private range() {
+    const o = this.opts;
+    return { x0: o.x0 ?? 0, x1: o.x1 ?? o.cols - 1, y0: o.y0 ?? 0, y1: o.y1 ?? o.rows - 1 };
+  }
+
+  protected computeDomain() {
+    const r = this.range();
+    this.full = { ...r };
+    let m = 0;
+    for (let i = 0; i < this.opts.u.length; i++) m = Math.max(m, Math.hypot(this.opts.u[i], this.opts.v[i]));
+    this.maxSpeed = m || 1;
+  }
+
+  /** Bilinear sample of the field at a data point. */
+  private field(x: number, y: number): [number, number] | null {
+    const { cols, rows, u, v } = this.opts;
+    const r = this.range();
+    const gx = ((x - r.x0) / (r.x1 - r.x0)) * (cols - 1);
+    const gy = ((y - r.y0) / (r.y1 - r.y0)) * (rows - 1);
+    if (gx < 0 || gy < 0 || gx > cols - 1 || gy > rows - 1) return null;
+    const c = Math.min(cols - 2, Math.floor(gx));
+    const k = Math.min(rows - 2, Math.floor(gy));
+    const tx = gx - c;
+    const ty = gy - k;
+    const at = (a: Numbers, rr: number, cc: number) => a[rr * cols + cc];
+    const lerp = (a: Numbers) => (at(a, k, c) * (1 - tx) + at(a, k, c + 1) * tx) * (1 - ty) + (at(a, k + 1, c) * (1 - tx) + at(a, k + 1, c + 1) * tx) * ty;
+    return [lerp(u), lerp(v)];
+  }
+
+  protected marks(b: MarkBuilder) {
+    const f = this.full;
+    const W = this.plot.width;
+    const H = this.plot.height;
+    const [upx, upy] = this.unitsPerPx();
+    const d = this.opts.spacing ?? 22;
+    // Occupancy grid in px: a new line stops when it comes closer than d/2 to another.
+    const cell = d / 2;
+    const gc = Math.ceil(W / cell);
+    const gr = Math.ceil(H / cell);
+    const owner = new Int32Array(gc * gr).fill(-1);
+    const toPxX = (x: number) => (x - f.x0) / upx;
+    const toPxY = (y: number) => (y - f.y0) / upy;
+    const cellOf = (x: number, y: number) => {
+      const c = Math.floor(toPxX(x) / cell);
+      const r = Math.floor(toPxY(y) / cell);
+      return c >= 0 && r >= 0 && c < gc && r < gr ? r * gc + c : -1;
+    };
+    const ramp = this.theme.sequential.slice(2);
+    let id = 0;
+    const trace = (sx: number, sy: number, dir: 1 | -1, me: number) => {
+      const pts: number[] = [];
+      let x = sx;
+      let y = sy;
+      let speed = 0;
+      for (let step = 0; step < 600; step++) {
+        const vec = this.field(x, y);
+        if (!vec) break;
+        const s = Math.hypot(vec[0], vec[1]);
+        if (s < this.maxSpeed * 1e-3) break;
+        const ci = cellOf(x, y);
+        if (ci < 0 || (owner[ci] !== -1 && owner[ci] !== me)) break;
+        owner[ci] = me;
+        pts.push(x, y);
+        speed += s;
+        // Step 2 px along the flow (midpoint method), measured on screen.
+        const pxv = [vec[0] / upx, vec[1] / upy];
+        const len = Math.hypot(pxv[0], pxv[1]) || 1;
+        const mx = x + (dir * pxv[0] * upx) / len;
+        const my = y + (dir * pxv[1] * upy) / len;
+        const mid = this.field(mx, my);
+        if (!mid) break;
+        const pm = [mid[0] / upx, mid[1] / upy];
+        const lm = Math.hypot(pm[0], pm[1]) || 1;
+        x += (dir * 2 * pm[0] * upx) / lm;
+        y += (dir * 2 * pm[1] * upy) / lm;
+      }
+      return { pts, speed };
+    };
+    for (let py = d / 2; py < H; py += d) {
+      for (let px = d / 2; px < W; px += d) {
+        const sx = f.x0 + px * upx;
+        const sy = f.y0 + py * upy;
+        const ci = cellOf(sx, sy);
+        if (ci < 0 || owner[ci] !== -1) continue;
+        const me = id++;
+        const fwd = trace(sx, sy, 1, me);
+        owner[ci] = -1;
+        const back = trace(sx, sy, -1, me);
+        const pts: number[] = [];
+        for (let k = back.pts.length - 2; k >= 2; k -= 2) pts.push(back.pts[k], back.pts[k + 1]);
+        pts.push(...fwd.pts);
+        if (pts.length < 8) continue;
+        const n = pts.length / 2;
+        const mean = (fwd.speed + back.speed) / n;
+        const color = '#' + sampleRamp(ramp, Math.min(1, mean / this.maxSpeed)).getHexString();
+        b.line(pts, color, 1.5);
+        // Arrowhead in the middle of each line.
+        const m = Math.floor(n / 2) * 2;
+        if (m >= 2) {
+          const ax = toPxX(pts[m]) - toPxX(pts[m - 2]);
+          const ay = toPxY(pts[m + 1]) - toPxY(pts[m - 1]);
+          const l = Math.hypot(ax, ay) || 1;
+          const [ux, uy] = [ax / l, ay / l];
+          const tip = [pts[m], pts[m + 1]];
+          const wing = (sgn: number) => [tip[0] + (-ux * 6 + sgn * -uy * 3.5) * upx, tip[1] + (-uy * 6 + sgn * ux * 3.5) * upy];
+          b.poly([...tip, ...wing(1), ...wing(-1)], color);
+        }
+      }
+    }
+  }
+
+  protected hitTest(px: number, py: number) {
+    if (!this.inPlot(px, py)) return null;
+    const [x, y] = this.toData(px, py);
+    const vec = this.field(x, y);
+    if (!vec) return null;
+    const s = Math.hypot(vec[0], vec[1]);
+    const ang = (Math.atan2(vec[1], vec[0]) * 180) / Math.PI;
+    return { series: 'Field', index: 0, title: `x ${this.formatX(x)}, y ${this.formatY(y)}`, values: { Speed: s }, rows: [{ label: 'Speed', value: formatNumber(s) }, { label: 'Direction', value: `${Math.round(ang)}°` }, { label: 'u, v', value: `${formatNumber(vec[0])}, ${formatNumber(vec[1])}` }] };
   }
 }

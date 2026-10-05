@@ -118,6 +118,8 @@ interface ScatterBase extends CartesianOptions {
   /** Diameter range in CSS pixels for bubbles. Default [8, 48]. */
   sizeRange?: [number, number];
   opacity?: number;
+  /** Least-squares line per series, with R² in the tooltip. */
+  trendline?: boolean;
 }
 
 export interface ScatterOptions extends ScatterBase {
@@ -158,6 +160,8 @@ export interface CandlestickOptions extends CartesianOptions {
   name?: string;
   /** Moving averages and Bollinger bands drawn over the price. */
   indicators?: Indicator[];
+  /** Event flags along the x axis (earnings, splits, news). `x` matches the candle x. */
+  events?: { x: number; label: string; text?: string }[];
 }
 
 export interface PieDatum {

@@ -3,7 +3,7 @@ import { MarkChart, toColor, type MarkBuilder } from '../markchart';
 import { extent, formatNumber, nearestIndex, niceDomain } from '../scale';
 import { ema } from '../stats';
 import type { Numbers } from '../types';
-import type { DepthOptions, KagiOptions, MacdOptions, PointFigureOptions, RenkoOptions, RsiOptions } from '../types2';
+import type { DepthOptions, HLCOptions, HollowCandleOptions, KagiOptions, LineBreakOptions, MacdOptions, PointFigureOptions, RenkoOptions, RsiOptions } from '../types2';
 
 function upDown(chart: { theme: { series: string[] } }) {
   return { up: chart.theme.series[2], down: chart.theme.series[7] };
@@ -511,5 +511,164 @@ export class RsiChart extends IndicatorPanel<RsiOptions> {
         { label: 'Close', value: formatNumber(this.opts.close[i]) },
       ],
     };
+  }
+}
+
+// ---- Three line break -------------------------------------------------------------------------------
+
+/**
+ * Lines (boxes) that ignore time: a new line only when the close breaks the last
+ * line's high or low; a reversal needs to break the last `lines` lines.
+ */
+export class LineBreakChart extends MarkChart<LineBreakOptions> {
+  readonly type = 'lineBreak' as const;
+  protected showXTicks = false;
+  private boxes: { lo: number; hi: number; up: boolean; at: number }[] = [];
+
+  protected legendItems(): LegendItem[] {
+    const { up, down } = upDown(this);
+    return [
+      { name: 'Up', color: up },
+      { name: 'Down', color: down },
+    ];
+  }
+
+  protected computeDomain() {
+    const { close } = this.opts;
+    const n = this.opts.lines ?? 3;
+    const boxes: { lo: number; hi: number; up: boolean; at: number }[] = [];
+    let i = 1;
+    while (i < close.length && close[i] === close[0]) i++;
+    if (i < close.length) boxes.push({ lo: Math.min(close[0], close[i]), hi: Math.max(close[0], close[i]), up: close[i] > close[0], at: i });
+    for (i++; i < close.length; i++) {
+      const c = close[i];
+      const last = boxes[boxes.length - 1];
+      const back = boxes.slice(-n);
+      const lowest = Math.min(...back.map((b) => b.lo));
+      const highest = Math.max(...back.map((b) => b.hi));
+      if (last.up) {
+        if (c > last.hi) boxes.push({ lo: last.hi, hi: c, up: true, at: i });
+        else if (c < lowest) boxes.push({ lo: c, hi: last.lo, up: false, at: i });
+      } else {
+        if (c < last.lo) boxes.push({ lo: c, hi: last.lo, up: false, at: i });
+        else if (c > highest) boxes.push({ lo: last.hi, hi: c, up: true, at: i });
+      }
+    }
+    this.boxes = boxes;
+    const [lo, hi] = boxes.length ? [Math.min(...boxes.map((b) => b.lo)), Math.max(...boxes.map((b) => b.hi))] : [0, 1];
+    const [a, c] = niceDomain(lo, hi);
+    this.full = { x0: -1, x1: Math.max(1, boxes.length), y0: a, y1: c };
+  }
+
+  protected marks(b: MarkBuilder) {
+    const { up, down } = upDown(this);
+    b.grow = { base: (this.full.y0 + this.full.y1) / 2, horizontal: false };
+    this.boxes.forEach((box, k) => {
+      if (this.hidden.has(box.up ? 'Up' : 'Down')) return;
+      const color = box.up ? up : down;
+      b.rect(k - 0.4, box.lo, k + 0.4, box.hi, color);
+      const when = this.opts.x ? this.formatXTip(this.opts.x[box.at]) : `#${box.at}`;
+      b.region({ k: 'rect', x0: k - 0.45, y0: box.lo, x1: k + 0.45, y1: box.hi, hit: { series: box.up ? 'Up line' : 'Down line', index: k, color, title: when, values: { From: box.up ? box.lo : box.hi, To: box.up ? box.hi : box.lo }, rows: [{ label: 'From', value: formatNumber(box.up ? box.lo : box.hi) }, { label: 'To', value: formatNumber(box.up ? box.hi : box.lo), color }] } });
+    });
+  }
+}
+
+// ---- Hollow candlestick and HLC ----------------------------------------------------------------------------
+
+abstract class PriceBars<O extends HollowCandleOptions | HLCOptions> extends MarkChart<O> {
+  protected xs: Numbers = [];
+  private hover: { px: number; py: number; color: string } | null = null;
+
+  protected xAt(i: number) {
+    return this.opts.x ? this.opts.x[i] : i;
+  }
+
+  protected computeDomain() {
+    const { high, low, close } = this.opts;
+    const n = close.length;
+    this.xs = this.opts.x ?? Float64Array.from({ length: n }, (_, i) => i);
+    const [lo] = extent(low);
+    const [, hi] = extent(high);
+    let sp = Infinity;
+    for (let i = 1; i < Math.min(n, 2000); i++) sp = Math.min(sp, this.xAt(i) - this.xAt(i - 1));
+    if (!(sp > 0 && isFinite(sp))) sp = 1;
+    const [a, c] = niceDomain(lo, hi);
+    this.full = { x0: this.xAt(0) - sp, x1: this.xAt(n - 1) + sp, y0: a, y1: c };
+  }
+
+  protected spacing() {
+    let sp = Infinity;
+    for (let i = 1; i < Math.min(this.xs.length, 2000); i++) sp = Math.min(sp, this.xs[i] - this.xs[i - 1]);
+    return sp > 0 && isFinite(sp) ? sp : 1;
+  }
+
+  protected hitTest(px: number, py: number): Hit | null {
+    if (!this.inPlot(px, py)) return null;
+    const i = nearestIndex(this.xs, this.toData(px, py)[0]);
+    if (i < 0) return null;
+    const { high, low, close } = this.opts;
+    const open = this.opts.open;
+    const { up, down } = upDown(this);
+    const color = i && close[i] < close[i - 1] ? down : up;
+    const [hx, hy] = this.toPx(this.xAt(i), close[i]);
+    this.hover = { px: hx, py: hy, color };
+    return {
+      series: this.opts.name ?? 'Price',
+      index: i,
+      title: this.formatXTip(this.xAt(i)),
+      values: { High: high[i], Low: low[i], Close: close[i] },
+      rows: [
+        ...(open ? [{ label: 'Open', value: this.formatY(open[i]) }] : []),
+        { label: 'High', value: this.formatY(high[i]) },
+        { label: 'Low', value: this.formatY(low[i]) },
+        { label: 'Close', value: this.formatY(close[i]), color },
+      ],
+    };
+  }
+
+  protected highlight(hit: Hit | null) {
+    this.showCrosshair(hit && this.hover ? this.hover.px : null);
+  }
+}
+
+/**
+ * Hollow candles: hollow when the close is above the open, filled when below;
+ * green or red by the change from the previous close.
+ */
+export class HollowCandleChart extends PriceBars<HollowCandleOptions> {
+  readonly type = 'hollowCandle' as const;
+
+  protected marks(b: MarkBuilder) {
+    const { open, high, low, close } = this.opts;
+    const { up, down } = upDown(this);
+    const half = this.spacing() * 0.35;
+    for (let i = 0; i < close.length; i++) {
+      const x = this.xAt(i);
+      const color = i && close[i] < close[i - 1] ? down : up;
+      const top = Math.max(open[i], close[i]);
+      const bot = Math.min(open[i], close[i]);
+      b.seg(x, high[i], x, top, color, 1);
+      b.seg(x, bot, x, low[i], color, 1);
+      if (close[i] > open[i]) b.line([x - half, bot, x + half, bot, x + half, top, x - half, top], color, 1.2, 1, true);
+      else b.rect(x - half, bot, x + half, top, color);
+    }
+  }
+}
+
+/** High-low-close bars: a vertical range with a tick at the close (open optional, on the left). */
+export class HLCChart extends PriceBars<HLCOptions> {
+  readonly type = 'hlc' as const;
+
+  protected marks(b: MarkBuilder) {
+    const { open, high, low, close } = this.opts;
+    const { up, down } = upDown(this);
+    const half = this.spacing() * 0.35;
+    for (let i = 0; i < close.length; i++) {
+      const x = this.xAt(i);
+      const color = i && close[i] < close[i - 1] ? down : up;
+      b.seg(x, low[i], x, high[i], color, 1.5);
+      b.seg(x, close[i], x + half, close[i], color, 1.5);
+      if (open) b.seg(x - half, open[i], x, open[i], color, 1.5);
+    }
   }
 }

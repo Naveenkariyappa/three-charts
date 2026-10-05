@@ -1,6 +1,6 @@
 # three-charts
 
-105 fast 2D and 3D chart types built on three.js (WebGL), handed out like [shadcn/ui](https://ui.shadcn.com): you don't install a charting library, you copy the chart's code into your project and own it. Works with React (TypeScript or JavaScript) and with plain TypeScript/JavaScript, with or without a build step. The only dependency is `three`.
+134 fast 2D and 3D chart types built on three.js (WebGL), handed out like [shadcn/ui](https://ui.shadcn.com): you don't install a charting library, you copy the chart's code into your project and own it. Works with React (TypeScript or JavaScript) and with plain TypeScript/JavaScript, with or without a build step. The only dependency is `three`.
 
 **Live demo, docs and code:** https://three-charts.vercel.app (docs: https://three-charts.vercel.app/#/docs)
 
@@ -140,27 +140,29 @@ Every chart page has a complete example with realistic data for that chart.
 
 ---
 
-## Chart types (105)
+## Chart types (134)
+
+How these compare with 25 other charting libraries, chart by chart: [CHARTS.md](CHARTS.md).
 
 Each type below has its own file and component (`bar` is `bar-chart.tsx` / `<BarChart>` / `createBarChart()`). Variants in parentheses are options on that chart.
 
 | Group | Types |
 |---|---|
-| Comparison | `bar` (grouped, `stacked`, `stacked: 'percent'`, `horizontal`), `lollipop`, `dotplot`, `dumbbell`, `rangeBar`, `bullet`, `waterfall`, `marimekko`, `pictograph`, `radialBar`, `radar`, `pareto`, `populationPyramid`, `wordCloud` |
-| Trend | `line` (`step`, `smooth`), `area` (`stacked`, `'percent'`, `'stream'`), `rangeArea`, `slope`, `bump`, `horizon`, `sparkline`, `radialLine`, `confidenceBand` |
-| Distribution | `histogram`, `box`, `violin`, `density`, `ridgeline`, `beeswarm`, `strip`, `ecdf`, `qq`, `errorBar` |
-| Part-to-whole | `pie`, `donut`, `semiDonut`, `waffle`, `funnel`, `pyramid`, `venn`, `polarArea`, `windRose` |
-| Hierarchy | `treemap`, `sunburst`, `icicle`, `pack`, `dendrogram`, `orgChart`, `mindMap` |
-| Relationship | `scatter`, `bubble`, `heatmap`, `hexbin`, `density2d`, `splom`, `connectedScatter`, `parallel`, `voronoi`, `polarScatter` |
-| Network | `chord`, `arcDiagram`, `adjacency`, `network`, `network3d` |
+| Comparison | `bar` (grouped, `stacked`, `stacked: 'percent'`, `horizontal`), `lollipop`, `dotplot`, `dumbbell`, `rangeBar`, `bullet`, `waterfall`, `marimekko`, `pictograph`, `radialBar`, `radar`, `pareto`, `populationPyramid`, `wordCloud`, `divergingBar`, `variwide`, `jumpLine` |
+| Trend | `line` (`step`, `smooth`), `area` (`stacked`, `'percent'`, `'stream'`), `rangeArea`, `slope`, `bump`, `horizon`, `sparkline`, `radialLine`, `confidenceBand`, `baseline`, `difference`, `areaBump`, `stem`, `smallMultiples`, `navigator` |
+| Distribution | `histogram`, `box`, `violin`, `density`, `ridgeline`, `beeswarm`, `strip`, `ecdf`, `qq`, `errorBar`, `dotHistogram` |
+| Part-to-whole | `pie`, `donut`, `semiDonut`, `waffle`, `funnel`, `pyramid`, `venn`, `polarArea`, `windRose`, `variablePie`, `parliament`, `packedBubble` |
+| Hierarchy | `treemap`, `sunburst`, `icicle`, `pack`, `dendrogram`, `orgChart`, `mindMap`, `radialTree` |
+| Relationship | `scatter`, `bubble`, `heatmap`, `hexbin`, `density2d`, `splom`, `connectedScatter`, `parallel`, `voronoi`, `polarScatter`, `quadrant`, `radialHeatmap`, `histogram2d`; scatter `trendline: true` |
+| Network | `chord`, `arcDiagram`, `adjacency`, `network`, `network3d`, `edgeBundling` |
 | Flow & time | `sankey`, `alluvial`, `gantt`, `timeline`, `calendar` |
-| KPI | `gauge`, `linearGauge` (`variant: 'thermometer'`), `progressRing`, `stat` |
+| KPI | `gauge`, `linearGauge` (`variant: 'thermometer'`), `progressRing`, `stat`, `liquidGauge`, `winLoss` |
 | Machine learning | `confusionMatrix` (counts, or `normalize: 'row' \| 'column'`), `rocCurve` (`kind: 'roc' \| 'pr'`, AUC / average precision computed from labels and scores) |
-| Financial | `candlestick` (`indicators`: SMA, EMA, Bollinger), `ohlc`, `heikinAshi`, `volumeProfile`, `renko`, `pointFigure`, `kagi`, `depth`, `macd`, `rsi` |
-| Geo | `choropleth`, `bubbleMap`, `flowMap`, `hexbinMap`, `cartogram`, `dotDensity`, `globe` (pass any TopoJSON, e.g. `world-atlas`) |
-| 3D & scientific | `bar3d`, `scatter3d`, `line3d`, `surface3d`, `mesh3d`, `isosurface`, `vectorField`, `vectorField3d`, `contour`, `spectrogram`, `waterfall3d`, `ternary`, `smith` |
+| Financial | `candlestick` (`indicators`: SMA, EMA, Bollinger; `events`: flags), `ohlc`, `hollowCandle`, `hlc`, `heikinAshi`, `volumeProfile`, `renko`, `pointFigure`, `kagi`, `lineBreak`, `depth`, `macd`, `rsi` |
+| Geo | `choropleth`, `bubbleMap`, `flowMap`, `hexbinMap`, `densityMap`, `cartogram`, `dotDensity`, `tileMap`, `spikeMap`, `globe`, `map3d` (pass any TopoJSON, e.g. `world-atlas`) |
+| 3D & scientific | `bar3d`, `scatter3d`, `line3d`, `surface3d`, `mesh3d`, `isosurface`, `vectorField`, `vectorField3d`, `contour`, `spectrogram`, `waterfall3d`, `ternary`, `smith`, `streamline`, `windBarb` |
 
-Not built on purpose: 3D pie (perspective distorts slice sizes).
+Not built on purpose: 3D pie, 3D funnel/pyramid and dual-axis charts (they distort or mislead). See [CHARTS.md](CHARTS.md) for the few other types not built yet.
 
 Any 2D axis chart takes `sync: 'name'`: charts with the same name zoom and pan their x axis together (price + MACD + RSI).
 

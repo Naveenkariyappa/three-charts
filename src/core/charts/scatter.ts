@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { CartesianChart } from '../cartesian';
 import type { Hit, LegendItem } from '../base';
-import { createPoints } from '../marks';
-import { extent, niceDomain } from '../scale';
+import { createLine, createPoints } from '../marks';
+import { extent, formatNumber, niceDomain } from '../scale';
 import type { BubbleOptions, ScatterOptions, ScatterSeries } from '../types';
 
 /**
@@ -80,6 +80,27 @@ class GridIndex {
   }
 }
 
+/** Ordinary least squares y = slope * x + intercept, with R². */
+function linearFit(x: ArrayLike<number>, y: ArrayLike<number>) {
+  const n = Math.min(x.length, y.length);
+  if (n < 2) return null;
+  let sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0;
+  for (let i = 0; i < n; i++) {
+    sx += x[i];
+    sy += y[i];
+    sxx += x[i] * x[i];
+    sxy += x[i] * y[i];
+    syy += y[i] * y[i];
+  }
+  const vx = n * sxx - sx * sx;
+  if (!vx) return null;
+  const slope = (n * sxy - sx * sy) / vx;
+  const intercept = (sy - slope * sx) / n;
+  const vy = n * syy - sy * sy;
+  const r = vy ? (n * sxy - sx * sy) / Math.sqrt(vx * vy) : 1;
+  return { slope, intercept, r2: r * r };
+}
+
 /** Scatter and bubble charts. 1M points render in one draw call per series. */
 export class ScatterChart extends CartesianChart<ScatterOptions | BubbleOptions> {
   readonly type: 'scatter' | 'bubble';
@@ -89,6 +110,8 @@ export class ScatterChart extends CartesianChart<ScatterOptions | BubbleOptions>
   private index: GridIndex | null = null;
   private sizeRange: [number, number] = [0, 1];
   private hover: { px: number; py: number; color: string } | null = null;
+  /** Least-squares fit per series name (when `trendline`). */
+  private fits = new Map<string, { slope: number; intercept: number; r2: number }>();
 
   constructor(container: HTMLElement, options: ScatterOptions | BubbleOptions) {
     super(container, options);
@@ -171,6 +194,25 @@ export class ScatterChart extends CartesianChart<ScatterOptions | BubbleOptions>
       this.points.push(p);
     }
     this.index = new GridIndex(this.visible, this.full);
+    this.fits.clear();
+    if (this.opts.trendline) {
+      for (const { s, color } of this.visible) {
+        const fit = linearFit(s.x, s.y);
+        if (!fit) continue;
+        this.fits.set(s.name, fit);
+        const [x0, x1] = extent(s.x);
+        const line = createLine(
+          new Float32Array([x0 - o.x, fit.slope * x0 + fit.intercept - o.y, 0, x1 - o.x, fit.slope * x1 + fit.intercept - o.y, 0]),
+          // One series: neutral ink stands out from the points; several: each series' own color.
+          this.visible.length === 1 ? this.theme.textPrimary : color,
+          2.5 * this.dpr,
+        );
+        // Points are transparent; a transparent line sorts with them, so renderOrder puts it on top.
+        line.material.transparent = true;
+        line.renderOrder = 5;
+        this.scene.add(line);
+      }
+    }
   }
 
   protected onProgress() {
@@ -211,6 +253,8 @@ export class ScatterChart extends CartesianChart<ScatterOptions | BubbleOptions>
     this.hover = { px: hx, py: hy, color };
     const values: Record<string, string> = { x: this.formatX(s.x[i]), y: this.formatY(s.y[i]) };
     if (s.size) values.size = this.formatY(s.size[i]);
+    const fit = this.fits.get(s.name);
+    if (fit) values.trend = `y = ${formatNumber(fit.slope)}x ${fit.intercept >= 0 ? '+' : '−'} ${formatNumber(Math.abs(fit.intercept))} (R² ${fit.r2.toFixed(2)})`;
     return { series: s.name, index: i, values, color, rows: Object.entries(values).map(([label, value]) => ({ label, value })) };
   }
 

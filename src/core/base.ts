@@ -96,6 +96,8 @@ export class LabelPool {
     el.style.maxWidth = style?.maxWidth !== undefined ? Math.max(0, style.maxWidth) + 'px' : '';
     el.classList.toggle('tc-clip', style?.maxWidth !== undefined);
     el.style.transform = `translate(${x}px,${y}px) translate(${-ax * 100}%,${-ay * 100}%)` + (style?.rotate ? ` rotate(${style.rotate}deg)` : '');
+    // Rotate about the anchor, so a label pivots on the point it's attached to.
+    el.style.transformOrigin = style?.rotate ? `${ax * 100}% ${ay * 100}%` : '';
   }
   end() {
     for (let i = this.n; i < this.els.length; i++) this.els[i].style.display = 'none';

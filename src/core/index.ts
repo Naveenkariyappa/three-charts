@@ -14,15 +14,18 @@ import { ArcDiagramChart, ChordChart, ConnectedScatterChart, ContourChart, Densi
 import { AlluvialChart, CalendarChart, GanttChart, SankeyChart, TimelineChart } from './charts/flow';
 import { Network3DChart, NetworkChart } from './charts/network';
 import { LinearGaugeChart, ProgressRingChart, StatChart } from './charts/kpi';
-import { DepthChart, KagiChart, MacdChart, PointFigureChart, RenkoChart, RsiChart } from './charts/financial';
-import { BubbleMapChart, CartogramChart, ChoroplethChart, DotDensityChart, FlowMapChart, GlobeChart, HexbinMapChart } from './charts/geo';
-import { SmithChart, TernaryChart, VectorFieldChart } from './charts/scientific';
+import { DepthChart, HLCChart, HollowCandleChart, KagiChart, LineBreakChart, MacdChart, PointFigureChart, RenkoChart, RsiChart } from './charts/financial';
+import { BubbleMapChart, CartogramChart, ChoroplethChart, DensityMapChart, DotDensityChart, FlowMapChart, GlobeChart, HexbinMapChart, Map3DChart, SpikeMapChart, TileMapChart } from './charts/geo';
+import { Histogram2DChart, SmithChart, StreamlineChart, TernaryChart, VectorFieldChart } from './charts/scientific';
 import { IsosurfaceChart, Mesh3DChart, VectorField3DChart, Waterfall3DChart } from './charts/three-d-extra';
 import { AdjacencyChart, SpectrogramChart } from './charts/adapters';
 import { MindMapChart, WordCloudChart } from './charts/text';
 import { ConfidenceBandChart, ErrorBarChart, ParetoChart, PopulationPyramidChart } from './charts/statistical';
 import { PolarScatterChart, VoronoiChart } from './charts/spatial';
 import { ConfusionMatrixChart, RocCurveChart } from './charts/ml';
+import { AreaBumpChart, BaselineChart, DifferenceChart, NavigatorChart, SmallMultiplesChart, WindBarbChart } from './charts/trend2';
+import { DivergingBarChart, DotHistogramChart, JumpLineChart, PackedBubbleChart, QuadrantChart, StemChart, VariwideChart, WinLossChart } from './charts/comparison2';
+import { EdgeBundlingChart, LiquidGaugeChart, ParliamentChart, RadialHeatmapChart, RadialTreeChart, VariablePieChart } from './charts/radial';
 import type { Chart, ChartOptions, ChartType } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -146,6 +149,36 @@ const registry: Record<ChartType, Ctor> = {
   rsi: RsiChart,
   cartogram: CartogramChart,
   dotDensity: DotDensityChart,
+  // More types found across other libraries
+  baseline: BaselineChart,
+  difference: DifferenceChart,
+  areaBump: AreaBumpChart,
+  smallMultiples: SmallMultiplesChart,
+  navigator: NavigatorChart,
+  windBarb: WindBarbChart,
+  divergingBar: DivergingBarChart,
+  variwide: VariwideChart,
+  packedBubble: PackedBubbleChart,
+  quadrant: QuadrantChart,
+  stem: StemChart,
+  jumpLine: JumpLineChart,
+  dotHistogram: DotHistogramChart,
+  winLoss: WinLossChart,
+  variablePie: VariablePieChart,
+  parliament: ParliamentChart,
+  radialTree: RadialTreeChart,
+  edgeBundling: EdgeBundlingChart,
+  radialHeatmap: RadialHeatmapChart,
+  liquidGauge: LiquidGaugeChart,
+  tileMap: TileMapChart,
+  spikeMap: SpikeMapChart,
+  densityMap: DensityMapChart,
+  map3d: Map3DChart,
+  lineBreak: LineBreakChart,
+  hollowCandle: HollowCandleChart,
+  hlc: HLCChart,
+  histogram2d: Histogram2DChart,
+  streamline: StreamlineChart,
 };
 
 /**

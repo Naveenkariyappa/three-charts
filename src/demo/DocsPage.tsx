@@ -1,4 +1,5 @@
 import { CodeBlock, FlavourTabs, useStored, type Flavour } from './CodePage';
+import { COMPONENT } from './examples';
 import { DOC_EXAMPLES } from './docsExamples';
 
 /** The user guide: how to take a chart from this site into your own project. Mirrors the README. */
@@ -121,8 +122,9 @@ export function DocsPage() {
 
       <h2>What's available</h2>
       <p>
-        105 chart types across comparison, trend, distribution, part-to-whole, hierarchy, relationship, network, flow, KPI, machine learning, financial, geo and 3D. See
-        them all in the <a href="#/">Demo</a>.
+        {Object.keys(COMPONENT).length} chart types across comparison, trend, distribution, part-to-whole, hierarchy, relationship, network, flow, KPI, machine
+        learning, financial, geo and 3D. See them all in the <a href="#/">Demo</a>, and how they compare with 25 other charting libraries in{' '}
+        <a href="https://github.com/Naveenkariyappa/three-charts/blob/main/CHARTS.md">CHARTS.md</a>.
       </p>
     </article>
   );

@@ -3,13 +3,27 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import type { Hit, LegendItem } from '../base';
-import { Chart3D } from '../chart3d';
+import { Chart3D, HALF } from '../chart3d';
 import { featureContains, fitProjection, topoFeatures, type GeoFeature } from '../geo';
 import { MarkChart, inkOn, pointInPoly, type MarkBuilder } from '../markchart';
-import { formatNumber } from '../scale';
+import { extent, formatNumber } from '../scale';
 import { rng } from '../stats';
 import { sampleRamp } from '../theme';
-import type { BubbleMapOptions, CartogramOptions, ChoroplethOptions, DotDensityOptions, FlowMapOptions, GeoBase, GlobeOptions, HexbinMapOptions, Topology } from '../types2';
+import type {
+  BubbleMapOptions,
+  CartogramOptions,
+  ChoroplethOptions,
+  DensityMapOptions,
+  DotDensityOptions,
+  FlowMapOptions,
+  GeoBase,
+  GlobeOptions,
+  HexbinMapOptions,
+  Map3DOptions,
+  SpikeMapOptions,
+  TileMapOptions,
+  Topology,
+} from '../types2';
 
 const cache = new WeakMap<Topology, Map<string, GeoFeature[]>>();
 
@@ -407,6 +421,237 @@ export class DotDensityChart extends MapChart<DotDensityOptions> {
     }
     for (const [x, y, color] of dots) b.point(x, y, color, size, 'disc', 0.85);
     b.text(`1 dot = ${formatNumber(unit)}`, 4, this.plot.height - 4, 0, 1);
+  }
+}
+
+// ---- Tile map ------------------------------------------------------------------------------------------
+
+/** Every region as one equal tile on a grid (square or hex), so small regions get equal weight. */
+export class TileMapChart extends MarkChart<TileMapOptions> {
+  readonly type = 'tileMap' as const;
+  protected space: 'data' | 'pixel' = 'pixel';
+  protected showAxes = false;
+  protected plotPad = 4;
+  private lo = 0;
+  private hi = 1;
+
+  private stops() {
+    return this.opts.scale === 'diverging' ? this.theme.diverging : this.theme.sequential;
+  }
+
+  protected customLegend() {
+    return rampLegend(this.stops(), formatNumber(this.lo), formatNumber(this.hi));
+  }
+
+  protected marks(b: MarkBuilder) {
+    const tiles = this.opts.tiles;
+    if (!tiles.length) return;
+    let [lo, hi] = extent(tiles.map((t) => t.value));
+    if (this.opts.scale === 'diverging') {
+      const c = this.opts.center ?? 0;
+      const m = Math.max(Math.abs(lo - c), Math.abs(hi - c));
+      [lo, hi] = [c - m, c + m];
+    }
+    this.lo = lo;
+    this.hi = hi > lo ? hi : lo + 1;
+    const cols = Math.max(...tiles.map((t) => t.col)) + 1;
+    const rows = Math.max(...tiles.map((t) => t.row)) + 1;
+    const W = this.plot.width;
+    const H = this.plot.height;
+    const hex = this.opts.shape === 'hex';
+    // Fit the grid to the box; hex rows overlap by a quarter and odd rows shift half a tile.
+    const size = hex ? Math.min(W / (cols + 0.5) / Math.sqrt(3), H / ((rows - 1) * 1.5 + 2)) : Math.min(W / cols, H / rows);
+    const gw = hex ? (cols + 0.5) * Math.sqrt(3) * size : cols * size;
+    const gh = hex ? ((rows - 1) * 1.5 + 2) * size : rows * size;
+    const ox = (W - gw) / 2;
+    const oy = (H - gh) / 2;
+    tiles.forEach((t, i) => {
+      const color = '#' + sampleRamp(this.stops(), (t.value - this.lo) / (this.hi - this.lo)).getHexString();
+      let pts: number[];
+      let cx: number;
+      let cy: number;
+      if (hex) {
+        const r = size - 1;
+        cx = ox + Math.sqrt(3) * size * (t.col + 0.5 + (t.row & 1 ? 0.5 : 0));
+        cy = oy + size + t.row * 1.5 * size;
+        pts = [];
+        for (let k = 0; k < 6; k++) {
+          const a = (Math.PI / 3) * k + Math.PI / 6;
+          pts.push(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+        }
+      } else {
+        const x0 = ox + t.col * size + 1;
+        const y0 = oy + t.row * size + 1;
+        cx = x0 + size / 2 - 1;
+        cy = y0 + size / 2 - 1;
+        pts = [x0, y0, x0 + size - 2, y0, x0 + size - 2, y0 + size - 2, x0, y0 + size - 2];
+      }
+      b.poly(pts, color, 1);
+      if (size >= 18) b.text(t.id, cx, cy, 0.5, 0.5, false, { color: inkOn(color), size: Math.min(13, Math.max(9, size / 3)), maxWidth: size * 1.4 });
+      b.region({ k: 'poly', pts, hit: { series: t.label ?? t.id, index: i, color, values: { Value: t.value }, rows: [{ label: 'Value', value: formatNumber(t.value), color }] } });
+    });
+  }
+}
+
+// ---- Spike map ---------------------------------------------------------------------------------------
+
+/** Values at locations as vertical spikes: height reads more precisely than bubble area. */
+export class SpikeMapChart extends MapChart<SpikeMapOptions> {
+  readonly type = 'spikeMap' as const;
+
+  protected marks(b: MarkBuilder) {
+    this.setupProjection();
+    this.basemap(b, () => null);
+    const max = Math.max(...this.opts.points.map((p) => p.value), 1e-9);
+    const H = this.opts.maxHeight ?? 80;
+    const color = this.color(0);
+    // Back (north) first, so nearer spikes overlap farther ones.
+    const pts = this.opts.points.map((p, i) => ({ p, i, xy: this.P(p.lon, p.lat) })).sort((a, c) => a.xy[1] - c.xy[1]);
+    for (const { p, i, xy } of pts) {
+      const [x, y] = xy;
+      const h = (p.value / max) * H;
+      const w = 3.5;
+      const tri = [x - w, y, x, y - h, x + w, y];
+      b.poly(tri, color, 0.3);
+      b.line(tri, color, 1.2);
+      b.region({ k: 'poly', pts: [x - w - 2, y + 2, x - 2, y - h - 2, x + 2, y - h - 2, x + w + 2, y + 2], hit: { series: p.label ?? `${p.lat.toFixed(1)}, ${p.lon.toFixed(1)}`, index: i, color, values: { Value: p.value }, rows: [{ label: 'Value', value: formatNumber(p.value), color }] } });
+    }
+  }
+}
+
+// ---- Density map ----------------------------------------------------------------------------------
+
+/** A smooth heat layer of point density (optionally weighted) over a map. */
+export class DensityMapChart extends MapChart<DensityMapOptions> {
+  readonly type = 'densityMap' as const;
+  private grid: { cols: number; rows: number; cell: number; v: Float32Array; max: number } | null = null;
+
+  protected customLegend() {
+    return rampLegend(this.theme.sequential.slice(2), 'Low', 'High');
+  }
+
+  protected marks(b: MarkBuilder) {
+    this.setupProjection();
+    this.basemap(b, () => null, (f, i) => ({ series: f.name, index: i, values: {} }));
+    const W = this.plot.width;
+    const H = this.plot.height;
+    const cell = 3;
+    const cols = Math.ceil(W / cell);
+    const rows = Math.ceil(H / cell);
+    let v = new Float32Array(cols * rows);
+    const { lon, lat, weight } = this.opts;
+    for (let i = 0; i < lon.length; i++) {
+      const [x, y] = this.P(lon[i], lat[i]);
+      const c = Math.floor(x / cell);
+      const r = Math.floor(y / cell);
+      if (c >= 0 && c < cols && r >= 0 && r < rows) v[r * cols + c] += weight ? weight[i] : 1;
+    }
+    // Three box blurs approximate a Gaussian kernel.
+    const rad = Math.max(1, Math.round((this.opts.radius ?? 10) / cell / 1.7));
+    const tmp = new Float32Array(v.length);
+    const blur = (src: Float32Array, dst: Float32Array, horizontal: boolean) => {
+      const n = horizontal ? cols : rows;
+      const m = horizontal ? rows : cols;
+      for (let a = 0; a < m; a++) {
+        let acc = 0;
+        const at = (k: number) => (horizontal ? a * cols + k : k * cols + a);
+        for (let k = -rad; k <= rad; k++) if (k >= 0 && k < n) acc += src[at(k)];
+        for (let k = 0; k < n; k++) {
+          dst[at(k)] = acc / (2 * rad + 1);
+          const add = k + rad + 1;
+          const sub = k - rad;
+          if (add < n) acc += src[at(add)];
+          if (sub >= 0) acc -= src[at(sub)];
+        }
+      }
+    };
+    for (let pass = 0; pass < 3; pass++) {
+      blur(v, tmp, true);
+      blur(tmp, v, false);
+    }
+    let max = 0;
+    for (let i = 0; i < v.length; i++) if (v[i] > max) max = v[i];
+    this.grid = { cols, rows, cell, v, max };
+    if (!max) return;
+    const ramp = this.theme.sequential.slice(2);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const t = v[r * cols + c] / max;
+        if (t < 0.03) continue;
+        const color = '#' + sampleRamp(ramp, Math.sqrt(t)).getHexString();
+        b.box(c * cell, r * cell, (c + 1) * cell, (r + 1) * cell, color, Math.min(0.9, t * 1.8));
+      }
+    }
+    v = new Float32Array(0);
+  }
+
+  protected hitTest(px: number, py: number): Hit | null {
+    const hit = super.hitTest(px, py);
+    const g = this.grid;
+    if (!g || !g.max) return hit;
+    const [x, y] = this.toData(px, py);
+    const c = Math.floor(x / g.cell);
+    const r = Math.floor(y / g.cell);
+    if (c < 0 || r < 0 || c >= g.cols || r >= g.rows) return hit;
+    const t = g.v[r * g.cols + c] / g.max;
+    const row = { label: 'Density', value: `${Math.round(t * 100)}% of peak` };
+    return hit ? { ...hit, rows: [row] } : { series: 'Density', index: 0, values: {}, rows: [row] };
+  }
+}
+
+// ---- 3D extruded map ---------------------------------------------------------------------------------
+
+/** Regions extruded upward by value (a 3D choropleth); drag to orbit. */
+export class Map3DChart extends Chart3D<Map3DOptions> {
+  readonly type = 'map3d' as const;
+  private lo = 0;
+  private hi = 1;
+
+  protected customLegend() {
+    return rampLegend(this.theme.sequential, formatNumber(this.lo), formatNumber(this.hi));
+  }
+
+  protected buildContent() {
+    const feats = features(this.opts.topology, this.opts.object, this.opts.exclude);
+    const P = fitProjection(this.opts.projection ?? 'naturalEarth', feats, 2 * HALF, 2 * HALF, 0);
+    const vals = feats.map((f) => this.opts.values[f.name] ?? this.opts.values[f.id]).filter((v): v is number => v !== undefined);
+    [this.lo, this.hi] = vals.length ? extent(vals) : [0, 1];
+    if (this.hi <= this.lo) this.hi = this.lo + 1;
+    for (const f of feats) {
+      const v = this.opts.values[f.name] ?? this.opts.values[f.id];
+      const t = v === undefined ? 0 : (v - this.lo) / (this.hi - this.lo);
+      const depth = v === undefined ? 0.04 : 0.08 + t * 2.4;
+      const shapes = f.polygons.map((poly) => {
+        const toV = (r: number[]) => {
+          const out: THREE.Vector2[] = [];
+          for (let k = 0; k < r.length; k += 2) {
+            const [x, y] = P(r[k], r[k + 1]);
+            out.push(new THREE.Vector2(x - HALF, HALF - y));
+          }
+          return out;
+        };
+        const shape = new THREE.Shape(toV(poly[0]));
+        shape.holes = poly.slice(1).map((h) => new THREE.Path(toV(h)));
+        return shape;
+      });
+      const g = new THREE.ExtrudeGeometry(shapes, { depth, bevelEnabled: false });
+      g.rotateX(-Math.PI / 2);
+      const color = v === undefined ? new THREE.Color(this.theme.grid) : sampleRamp(this.theme.sequential, 0.15 + 0.85 * t);
+      const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0 }));
+      mesh.userData = { name: f.name, value: v };
+      this.content.add(mesh);
+    }
+    this.controls.target.set(0, 0.6, 0);
+    this.camera.position.set(0, 8.5, 9.5);
+    this.controls.update();
+  }
+
+  protected hitTest(px: number, py: number): Hit | null {
+    this.setRay(px, py);
+    const hit = this.raycaster.intersectObjects(this.content.children, false)[0];
+    if (!hit) return null;
+    const { name, value } = hit.object.userData as { name: string; value?: number };
+    return { series: name, index: 0, values: { Value: value ?? 'No data' }, rows: [{ label: 'Value', value: value === undefined ? 'No data' : formatNumber(value) }] };
   }
 }
 

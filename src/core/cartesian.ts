@@ -112,15 +112,20 @@ export abstract class CartesianChart<O extends CartesianOptions> extends BaseCha
 
   /** Tell charts in the same sync group about a user zoom / pan / reset. */
   private broadcastView() {
-    if (!this.syncKey) return;
     const { x0, x1 } = this.view;
-    const reset = x0 === this.full.x0 && x1 === this.full.x1;
+    this.broadcastRange(x0, x1, x0 === this.full.x0 && x1 === this.full.x1);
+  }
+
+  /** Send an x range to every other chart in this chart's sync group. */
+  protected broadcastRange(x0: number, x1: number, reset = false) {
+    if (!this.syncKey) return;
     for (const c of syncGroups().get(this.syncKey) ?? []) {
       if (c !== (this as unknown as CartesianChart<CartesianOptions>)) c.receiveView(x0, x1, reset);
     }
   }
 
-  private receiveView(x0: number, x1: number, reset: boolean) {
+  /** Another chart in the sync group zoomed or panned. Default: follow its x range. */
+  protected receiveView(x0: number, x1: number, reset: boolean) {
     const f = this.full;
     if (reset) [this.view.x0, this.view.x1] = [f.x0, f.x1];
     else [this.view.x0, this.view.x1] = clampRange(x0, x1, f.x0, f.x1);
