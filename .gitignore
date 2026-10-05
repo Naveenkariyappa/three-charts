@@ -9,3 +9,4 @@ public/registry.tmp-*
 public/r.tmp-*
 public/r *
 public/registry *
+.claude/
