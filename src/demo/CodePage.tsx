@@ -16,8 +16,8 @@ export type Flavour = 'react-ts' | 'react-js' | 'ts' | 'js';
 
 /** `single`: a one-file build exists (TypeScript flavours only). */
 const FLAVOURS: Record<Flavour, { label: string; ext: string; packExt: string; dir: string; react: boolean; single: boolean }> = {
-  'react-ts': { label: 'React · TS', ext: 'tsx', packExt: 'ts', dir: 'components/charts', react: true, single: true },
-  'react-js': { label: 'React · JS', ext: 'jsx', packExt: 'js', dir: 'components/charts', react: true, single: false },
+  'react-ts': { label: 'React · TS', ext: 'tsx', packExt: 'ts', dir: 'src/components/charts', react: true, single: true },
+  'react-js': { label: 'React · JS', ext: 'jsx', packExt: 'js', dir: 'src/components/charts', react: true, single: false },
   ts: { label: 'TypeScript', ext: 'ts', packExt: 'ts', dir: 'src/charts', react: false, single: true },
   js: { label: 'JavaScript', ext: 'js', packExt: 'js', dir: 'src/charts', react: false, single: false },
 };
@@ -32,6 +32,9 @@ interface Manifest {
   react: { file: string; tsx: Stat; jsx: Stat };
   charts: Record<string, { file: string; component: string; packs: string[]; ts: Stat; js: Stat; tsx: Stat; jsx: Stat; single: Record<'ts' | 'tsx', Stat> }>;
 }
+
+/** three ships without type definitions, so TypeScript projects also need @types/three. */
+const npmInstall = (flavour: Flavour) => (FLAVOURS[flavour].packExt === 'ts' ? 'npm install three && npm install -D @types/three' : 'npm install three');
 
 const BASE = import.meta.env.BASE_URL;
 const origin = () => new URL(BASE, location.href).href;
@@ -219,7 +222,7 @@ function installCommand(m: Manifest, flavour: Flavour, file?: string) {
   if (f.react && file) return `npx shadcn@latest add ${origin()}r/${file}.json`;
   const names = [...sharedFiles(m, flavour, file && Object.keys(m.charts).find((t) => m.charts[t].file === file)).map((x) => x.name), ...(file ? [`${file}.${f.ext}`] : [])];
   const urls = names.map((n) => `-O ${origin()}registry/${flavour}/${n}`).join(' ');
-  return `npm install three && mkdir -p ${f.dir} && cd ${f.dir} && curl ${urls}`;
+  return `${npmInstall(flavour)} && mkdir -p ${f.dir} && cd ${f.dir} && curl ${urls}`;
 }
 
 /** The shared files for a chart: a one-line summary, one download, one command. Code stays hidden unless asked for. */
@@ -242,7 +245,7 @@ function SharedFiles({ m, flavour, type }: { m: Manifest; flavour: Flavour; type
       <p className="meta">
         {f.react && chart ? 'The command uses the shadcn CLI. ' : ''}
         Shared files are the same for every chart: add them once per project and skip this step for your next chart.{' '}
-        {files.length} files, {lines(total)}. Run <code>npm install three</code> too.
+        {files.length} files, {lines(total)}. Run <code>{npmInstall(flavour)}</code> too.
       </p>
       <ul className="file-list">
         {files.map((x) => (
@@ -280,7 +283,7 @@ function SingleFile({ m, flavour, type }: { m: Manifest; flavour: Flavour; type:
       </div>
       <p className="meta">
         Only the code this chart uses, in one file. Good for a single chart; with several, the shared files avoid duplicate code. Still needs{' '}
-        <code>npm install three</code>.
+        <code>{npmInstall(flavour)}</code>.
       </p>
       {open && <RemoteCode path={path} file={name} collapsible />}
     </div>
@@ -513,7 +516,7 @@ function Setup({ flavour, setFlavour }: { flavour: Flavour; setFlavour: (f: Flav
       <FlavourTabs flavour={flavour} setFlavour={setFlavour} />
       <ol className="steps">
         <Step n={1} title="Install three.js">
-          <CodeBlock code="npm install three" file="terminal" />
+          <CodeBlock code={npmInstall(flavour)} file="terminal" />
         </Step>
         <Step n={2} title={<>Add the shared files to <code>{f.dir}/</code>, once</>}>{m && <SharedFiles m={m} flavour={flavour} />}</Step>
         <Step n={3} title="Pick a chart in the sidebar and copy its file next to them">

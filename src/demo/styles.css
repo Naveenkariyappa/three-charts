@@ -1275,3 +1275,12 @@ kbd {
     animation: none;
   }
 }
+
+.callout {
+  border-left: 3px solid var(--rule);
+  background: var(--surface);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text2);
+}

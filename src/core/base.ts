@@ -84,7 +84,10 @@ export interface LabelStyle {
 export class LabelPool {
   private els: HTMLDivElement[] = [];
   private n = 0;
-  constructor(private parent: HTMLElement) {}
+  private parent: HTMLElement;
+  constructor(parent: HTMLElement) {
+    this.parent = parent;
+  }
   begin() {
     this.n = 0;
   }

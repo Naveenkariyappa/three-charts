@@ -116,12 +116,17 @@ export class MarkBuilder {
   private pSize: number[] = [];
   private pShape: number[] = [];
 
-  constructor(
-    readonly ox: number,
-    readonly oy: number,
-    readonly yDown: boolean,
-    readonly surface = '#ffffff',
-  ) {}
+  readonly ox: number;
+  readonly oy: number;
+  readonly yDown: boolean;
+  readonly surface: string;
+
+  constructor(ox: number, oy: number, yDown: boolean, surface = '#ffffff') {
+    this.ox = ox;
+    this.oy = oy;
+    this.yDown = yDown;
+    this.surface = surface;
+  }
 
   /**
    * Translucent-looking curve drawn opaque: the color pre-mixed with the surface.

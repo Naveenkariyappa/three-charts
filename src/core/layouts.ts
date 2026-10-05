@@ -633,11 +633,14 @@ export class ForceSim {
   linkStrength: number[] = [];
   theta2 = 0.81;
 
-  constructor(
-    readonly nodes: ForceNode[],
-    readonly links: [number, number][],
-    readonly dims: 2 | 3,
-  ) {
+  readonly nodes: ForceNode[];
+  readonly links: [number, number][];
+  readonly dims: 2 | 3;
+
+  constructor(nodes: ForceNode[], links: [number, number][], dims: 2 | 3) {
+    this.nodes = nodes;
+    this.links = links;
+    this.dims = dims;
     const deg = new Array(nodes.length).fill(0);
     for (const [a, b] of links) {
       deg[a]++;

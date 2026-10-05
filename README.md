@@ -19,11 +19,13 @@ Every chart is one small file. Charts also share a few files (the engine, axes, 
 | You have | Do this |
 |---|---|
 | A React project set up with shadcn | `npx shadcn@latest add https://three-charts.vercel.app/r/bar-chart.json` (the chart page shows the exact command) |
-| Any React or bundler project (Vite, Next.js, webpack…) | `npm install three`, then click **Download (.zip)** on the chart page and unzip into `components/charts/` (React) or `src/charts/` |
-| Just one chart, simplest possible | TypeScript or React · TS tab → **One file**: a single self-contained file |
-| Plain HTML, no npm | **JavaScript** tab → download the zip, then use the HTML template under **Getting started** (loads three.js from a CDN) |
+| Any React or bundler project (Vite, Next.js, webpack…) | `npm install three` (with TypeScript, also `npm install -D @types/three`), then click **Download (.zip)** on the chart page and unzip into `src/components/charts/` (React) or `src/charts/` |
+| Just one chart, simplest possible | TypeScript or React · TS tab → **One file**: a single self-contained file (still needs `three` and `@types/three`) |
+| Plain HTML, no npm | **JavaScript** tab → download the zip, then use the HTML template under **Install the shared files** (loads three.js from a CDN). Serve the folder over http (e.g. `npx serve`); browsers block modules opened as a file. |
 
 The chart page also has **Copy install command**, which downloads the files with one terminal command.
+
+> **About `@/components/charts`.** The React examples import from `@/components/…`, the path alias shadcn projects already have. Without it, use a relative path such as `./components/charts/bar-chart`, or add the alias. For Vite: `resolve: { alias: { '@': '/src' } }` in `vite.config.ts` and `"paths": { "@/*": ["./src/*"] }` in `tsconfig.app.json`.
 
 ### 3. Use it
 
@@ -163,8 +165,8 @@ Every chart takes the same color, text and legend options. The **Customize** pan
 
   // Interaction
   tooltip: true,
-  onHover: (hit) => {},                           // hit: { series, index, values } or null
-  onClick: (hit) => {},
+  onHover: (hit) => console.log(hit?.series),     // hit: { series, index, values } or null
+  onClick: (hit) => console.log(hit.values),
 }
 ```
 

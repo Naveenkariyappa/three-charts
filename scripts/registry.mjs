@@ -852,6 +852,8 @@ export const ${c.comp} = chartComponent<${c.optsName}, ${coreCls}>(${coreCls}, '
       title: `${title} chart`,
       description: `${title} chart rendered with three.js (WebGL).`,
       dependencies: ['three'],
+      // three ships without types; the TypeScript files need them.
+      devDependencies: ['@types/three'],
       files: [...c.packs.map((p) => file(`${PACK.get(p).file}.ts`, packText.get(p).ts)), file('chart-react.tsx', reactTsx), file(`${c.file}.tsx`, tsx)],
     };
     fs.writeFileSync(path.join(outR, `${c.file}.json`), JSON.stringify(item, null, 2));

@@ -15,7 +15,8 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "erasableSyntaxOnly": true
   },
   "include": [
     "public/registry/ts/*.ts",

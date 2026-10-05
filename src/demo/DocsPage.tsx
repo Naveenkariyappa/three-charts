@@ -45,20 +45,22 @@ export function DocsPage() {
             <tr>
               <td>Any React or bundler project (Vite, Next.js, webpack…)</td>
               <td>
-                <code>npm install three</code>, then click <b>Download (.zip)</b> on the chart's page and unzip into <code>components/charts/</code> (React) or{' '}
-                <code>src/charts/</code>
+                <code>npm install three</code> (with TypeScript, also <code>npm install -D @types/three</code>), then click <b>Download (.zip)</b> on the
+                chart's page and unzip into <code>src/components/charts/</code> (React) or <code>src/charts/</code>
               </td>
             </tr>
             <tr>
               <td>Just one chart, simplest possible</td>
               <td>
-                <b>TypeScript</b> or <b>React · TS</b> tab → <b>One file</b>: a single self-contained file
+                <b>TypeScript</b> or <b>React · TS</b> tab → <b>One file</b>: a single self-contained file. Still needs <code>three</code> and{' '}
+                <code>@types/three</code>
               </td>
             </tr>
             <tr>
               <td>Plain HTML, no npm</td>
               <td>
-                <b>JavaScript</b> tab → download the zip, then use the HTML template in <a href="#/code/setup">Getting started</a> (loads three.js from a CDN).{' '}
+                <b>JavaScript</b> tab → download the zip, then use the HTML template in <a href="#/code/setup">Install the shared files</a> (loads three.js
+                from a CDN). Serve the folder over http (e.g. <code>npx serve</code>); browsers block modules opened as a file.{' '}
                 <a href="vanilla.html">Working example</a>
               </td>
             </tr>
@@ -67,6 +69,12 @@ export function DocsPage() {
       </div>
       <p className="meta">
         Each chart page also has <b>Copy install command</b>, which fetches the files with one terminal command.
+      </p>
+      <p className="callout">
+        <b>About <code>@/components/charts</code>.</b> The React examples import from <code>@/components/…</code>, the path alias shadcn projects already have.
+        Without it, use a relative path such as <code>./components/charts/bar-chart</code>, or add the alias (Vite):{' '}
+        <code>resolve: {'{'} alias: {'{'} '@': '/src' {'}'} {'}'}</code> in <code>vite.config.ts</code> and{' '}
+        <code>"paths": {'{'} "@/*": ["./src/*"] {'}'}</code> in <code>tsconfig</code>.
       </p>
 
       <h2>3. Use it</h2>
@@ -196,8 +204,8 @@ const CUSTOMIZE_CODE = `{
 
   // Interaction
   tooltip: true,
-  onHover: (hit) => {},                           // hit: { series, index, values } or null
-  onClick: (hit) => {},
+  onHover: (hit) => console.log(hit?.series),     // hit: { series, index, values } or null
+  onClick: (hit) => console.log(hit.values),
 }`;
 
 const CUSTOMIZE_ROWS: [string, string][] = [

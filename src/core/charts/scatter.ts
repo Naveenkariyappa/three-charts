@@ -18,10 +18,10 @@ class GridIndex {
   private cw = 1;
   private ch = 1;
 
-  constructor(
-    private series: { s: ScatterSeries; si: number }[],
-    domain: { x0: number; x1: number; y0: number; y1: number },
-  ) {
+  private series: { s: ScatterSeries; si: number }[];
+
+  constructor(series: { s: ScatterSeries; si: number }[], domain: { x0: number; x1: number; y0: number; y1: number }) {
+    this.series = series;
     const G = this.size;
     this.x0 = domain.x0;
     this.y0 = domain.y0;
