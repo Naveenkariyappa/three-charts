@@ -54,13 +54,11 @@ function usePageMode(c: Custom) {
   return resolvedMode(c);
 }
 
-/** Live preview plus controls for colors, legend, text and behavior. */
-export function Customizer({ ex, custom, setCustom }: { ex: Example; custom: Custom; setCustom: (c: Custom) => void }) {
+/** The example chart with the panel's options applied. */
+export function CustomPreview({ ex, custom }: { ex: Example; custom: Custom }) {
   const [base, setBase] = useState<ChartOptions | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const mode = usePageMode(custom);
-  const f = flagsFor(ex.type);
-  const set = <K extends keyof Custom>(k: K, v: Custom[K]) => setCustom({ ...custom, [k]: v });
+  usePageMode(custom);
 
   useEffect(() => {
     let live = true;
@@ -75,20 +73,33 @@ export function Customizer({ ex, custom, setCustom }: { ex: Example; custom: Cus
 
   const extra = useMemo(() => customOptions(custom, ex.type).values, [custom, ex.type]);
   const options = useMemo(() => (base ? ({ ...base, ...extra } as ChartOptions) : null), [base, extra]);
+  const height = Math.max(ex.height ?? 360, 360);
 
+  return (
+    <div className="cz-preview">
+      {error && <p className="meta">Couldn't build this example: {error}</p>}
+      {options ? <ThreeChart height={height} {...options} /> : <div className="cz-loading" style={{ height }} />}
+    </div>
+  );
+}
+
+/** Controls for colors, legend, text and behavior. Only controls that change this chart type are shown. */
+export function CustomPanel({ ex, custom, setCustom }: { ex: Example; custom: Custom; setCustom: (c: Custom) => void }) {
+  const mode = usePageMode(custom);
+  const f = flagsFor(ex.type);
+  const set = <K extends keyof Custom>(k: K, v: Custom[K]) => setCustom({ ...custom, [k]: v });
   const palette = custom.colors ?? defaultPalette(mode);
   const close = palette.slice(1).flatMap((c, i) => (deltaE(palette[i], c) < 15 ? [i + 1] : []));
   const ud = defaultUpDown(mode);
   const changed = JSON.stringify(custom) !== JSON.stringify(DEFAULT_CUSTOM);
 
   return (
-    <div className="customize">
-      <div className="cz-preview">
-        {error && <p className="meta">Couldn't build this example: {error}</p>}
-        {options ? <ThreeChart height={ex.height ?? 340} {...options} /> : <div style={{ height: ex.height ?? 340 }} />}
-      </div>
-
+    <>
       <div className="cz-panel">
+        <div className="cz-head">
+          <h3>Customize</h3>
+          <p className="meta">Changes apply to the chart and to the code. They carry over as you move between charts.</p>
+        </div>
         <fieldset>
           <legend>Colors</legend>
           <Row label="Theme">
@@ -256,9 +267,9 @@ export function Customizer({ ex, custom, setCustom }: { ex: Example; custom: Cus
         </fieldset>
 
         <button type="button" className="btn small" disabled={!changed} onClick={() => setCustom(DEFAULT_CUSTOM)}>
-          Reset
+          Reset all
         </button>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { COMPONENT, EXAMPLES, chartFile, jsSnippet, jsxSnippet, tsSnippet, tsxSnippet, type Example } from './examples';
-import { GROUPS } from './examples2';
 import { LIVE_SNIPPETS } from './LiveChart';
-import { Customizer } from './Customizer';
+import { CustomPanel, CustomPreview } from './Customizer';
+import { PAGES } from './Sidebar';
 import { DEFAULT_CUSTOM, customOptions, mergeProps, type Custom } from './customize';
 import { zip } from './zip';
 
@@ -314,13 +314,13 @@ function ChartDoc({
   const extra = customOptions(custom, ex.type).code;
   const usage = snippetFor(extra.length ? { ...ex, props: mergeProps(ex.props, extra) } : ex, flavour);
   return (
-    <section>
-      <h2>{ex.title}</h2>
-      <p className="blurb">{ex.blurb}</p>
-
-      <h3>Customize</h3>
-      <p className="meta">Change colors, the legend and text here. The code below updates to match.</p>
-      <Customizer ex={ex} custom={custom} setCustom={setCustom} />
+    <div className="chart-page">
+      <PageHead id={ex.id} title={ex.title} blurb={ex.blurb} group={ex.group ?? ''} badges={[ex.type, ex.dim, ...(ex.scale ? [ex.scale] : [])]} />
+      <div className="chart-cols">
+      <div className="chart-preview">
+        <CustomPreview ex={ex} custom={custom} />
+      </div>
+      <section className="chart-main">
 
       <FlavourTabs flavour={flavour} setFlavour={setFlavour} />
 
@@ -396,7 +396,75 @@ function ChartDoc({
           From code: <code>{f.react ? 'ref.current.chart()' : 'chart'}.toggleSeries(name)</code> hides or shows a series; <code>hiddenSeries()</code> lists hidden ones.
         </li>
       </ul>
-    </section>
+      </section>
+      <aside className="chart-aside" aria-label="Customize">
+        <CustomPanel ex={ex} custom={custom} setCustom={setCustom} />
+      </aside>
+      </div>
+      <PrevNext id={ex.id} />
+    </div>
+  );
+}
+
+/** Breadcrumb, title and spec badges for a chart page. */
+function PageHead({ id, title, blurb, group, badges }: { id: string; title: string; blurb: string; group: string; badges: string[] }) {
+  const i = PAGES.findIndex((p) => p.id === id);
+  const prev = PAGES[i - 1];
+  const next = PAGES[i + 1];
+  return (
+    <header className="page-head">
+      <div className="crumbs">
+        <a href="#/">Charts</a>
+        <span aria-hidden="true">/</span>
+        <span>{group}</span>
+        <span className="crumb-nav">
+          {prev && (
+            <a href={`#/code/${prev.id}`} title={prev.title} aria-label={`Previous: ${prev.title}`}>
+              ←
+            </a>
+          )}
+          {next && (
+            <a href={`#/code/${next.id}`} title={next.title} aria-label={`Next: ${next.title}`}>
+              →
+            </a>
+          )}
+        </span>
+      </div>
+      <h1>{title}</h1>
+      <p className="blurb">{blurb}</p>
+      <div className="spec-row">
+        {badges.map((b) => (
+          <span key={b} className="badge">
+            {b}
+          </span>
+        ))}
+      </div>
+    </header>
+  );
+}
+
+/** Previous / next chart, in sidebar order. */
+function PrevNext({ id }: { id: string }) {
+  const i = PAGES.findIndex((p) => p.id === id);
+  const prev = PAGES[i - 1];
+  const next = PAGES[i + 1];
+  return (
+    <nav className="prev-next" aria-label="More charts">
+      {prev ? (
+        <a href={`#/code/${prev.id}`}>
+          <span>Previous</span>
+          {prev.title}
+        </a>
+      ) : (
+        <span />
+      )}
+      {next && (
+        <a href={`#/code/${next.id}`} className="next">
+          <span>Next</span>
+          {next.title}
+        </a>
+      )}
+    </nav>
   );
 }
 
@@ -436,8 +504,8 @@ function Setup({ flavour, setFlavour }: { flavour: Flavour; setFlavour: (f: Flav
   const usage = m ? Object.fromEntries(Object.keys(m.packs).map((p) => [p, Object.values(m.charts).filter((c) => c.packs.includes(p)).length])) : {};
   const median = m ? Object.values(m.charts).map((c) => c[f.ext as 'ts'].lines).sort((a, b) => a - b)[Object.keys(m.charts).length >> 1] : 0;
   return (
-    <section id="setup">
-      <h2>Getting started</h2>
+    <section id="setup" className="prose">
+      <h1>Install the shared files</h1>
       <p className="blurb">
         Not a library: like shadcn/ui, you copy code into your project and own it. Each chart is one small file (median {median} lines). The code charts share
         (engine, axes, layouts) lives in a few shared files you add once. The only dependency is <code>three</code>.
@@ -448,7 +516,7 @@ function Setup({ flavour, setFlavour }: { flavour: Flavour; setFlavour: (f: Flav
           <CodeBlock code="npm install three" file="terminal" />
         </Step>
         <Step n={2} title={<>Add the shared files to <code>{f.dir}/</code>, once</>}>{m && <SharedFiles m={m} flavour={flavour} />}</Step>
-        <Step n={3} title="Pick a chart on the left and copy its file next to them">
+        <Step n={3} title="Pick a chart in the sidebar and copy its file next to them">
           <p className="meta">
             Each chart page also has a single install command for that chart, and (TypeScript and React · TS) a one-file version.
             {f.react && (
@@ -514,8 +582,8 @@ function LiveDoc({ flavour, setFlavour, code }: { flavour: Flavour; setFlavour: 
   const m = useManifest();
   const f = FLAVOURS[flavour];
   return (
-    <section>
-      <h2>Live streaming line</h2>
+    <section className="prose">
+      <h1>Live streaming line</h1>
       <p className="blurb">Push new samples through the chart handle; React never re-renders.</p>
       <FlavourTabs flavour={flavour} setFlavour={setFlavour} />
       <h3>Usage</h3>
@@ -529,36 +597,27 @@ function LiveDoc({ flavour, setFlavour, code }: { flavour: Flavour; setFlavour: 
   );
 }
 
+// Kept for the whole visit, so one set of brand colors applies to every chart you open.
+let savedCustom: Custom = DEFAULT_CUSTOM;
+
 export function CodePage({ id }: { id?: string }) {
   const current = id ?? 'setup';
   const [flavour, setFlavour] = useStored<Flavour>('tc-flavour', 'react-ts');
-  // Kept while moving between charts, so one set of brand colors applies to all of them.
-  const [custom, setCustom] = useState<Custom>(DEFAULT_CUSTOM);
+  const [custom, setCustomState] = useState<Custom>(savedCustom);
+  const setCustom = (c: Custom) => {
+    savedCustom = c;
+    setCustomState(c);
+  };
   const ex = EXAMPLES.find((e) => e.id === current);
-  const link = (key: string, title: string) => (
-    <a key={key} href={`#/code/${key}`} className={key === current ? 'on' : ''} aria-current={key === current ? 'page' : undefined}>
-      {title}
-    </a>
-  );
   const live = { 'react-ts': LIVE_SNIPPETS.tsx, 'react-js': LIVE_SNIPPETS.jsx, ts: LIVE_SNIPPETS.ts, js: LIVE_SNIPPETS.js }[flavour];
 
   return (
     <div className="code-page">
-      <nav className="side" aria-label="Charts">
-        {link('setup', 'Getting started')}
-        {GROUPS.map((g) => (
-          <div key={g} style={{ display: 'contents' }}>
-            <div className="side-group">{g}</div>
-            {g === 'Trend' && link('live', 'Live streaming line')}
-            {EXAMPLES.filter((e) => e.group === g).map((e) => link(e.id, e.title))}
-          </div>
-        ))}
-      </nav>
-      <main className="code-main">
+      <div className="code-main">
         {current === 'setup' && <Setup flavour={flavour} setFlavour={setFlavour} />}
         {current === 'live' && <LiveDoc flavour={flavour} setFlavour={setFlavour} code={live} />}
         {ex && <ChartDoc key={ex.id} ex={ex} flavour={flavour} setFlavour={setFlavour} custom={custom} setCustom={setCustom} />}
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { CodePage } from './CodePage';
 import { DocsPage } from './DocsPage';
+import { COMPONENT } from './examples';
 import { Gallery } from './Gallery';
+import { Sidebar } from './Sidebar';
 
 function useHash() {
   const [hash, setHash] = useState(location.hash);
@@ -40,42 +42,51 @@ function useTheme(): [Theme, () => void] {
 export function App() {
   const hash = useHash();
   const [theme, toggle] = useTheme();
+  const [menu, setMenu] = useState(false);
   const [path, query] = hash.replace(/^#/, '').split('?');
   const parts = path.split('/').filter(Boolean);
   const page = parts[0] ?? '';
   const focus = new URLSearchParams(query).get('focus') ?? undefined;
+  const isCode = page === 'code';
+  const current = isCode ? (parts[1] ?? 'setup') : page === 'docs' ? 'docs' : 'overview';
 
   useEffect(() => {
-    if (page === 'code' || page === 'docs') window.scrollTo(0, 0);
+    if (isCode || page === 'docs') window.scrollTo(0, 0);
+    setMenu(false);
   }, [page, parts[1]]);
-
-  const link = (href: string, label: string, active: boolean) => (
-    <a href={href} className={active ? 'on' : ''} aria-current={active ? 'page' : undefined}>
-      {label}
-    </a>
-  );
 
   return (
     <>
       <header className="top">
+        <button className="menu-btn" aria-label="Show charts" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        </button>
         <a className="brand" href="#/">
           three-charts
         </a>
-        <nav>
-          {link('#/', 'Demo', !['code', 'docs'].includes(page))}
-          {link('#/docs', 'Docs', page === 'docs')}
-          {link('#/code', 'Code', page === 'code')}
-          <a href="vanilla.html">Vanilla page</a>
+        <span className="top-meta">{Object.keys(COMPONENT).length} chart types · copy, don’t install</span>
+        <nav className="top-links">
+          <a href="#/docs" className={page === 'docs' ? 'on' : ''}>
+            Guide
+          </a>
+          <a href="vanilla.html">Plain HTML demo</a>
+          <a href="https://github.com/Naveenkariyappa/three-charts">GitHub</a>
         </nav>
         <button className="btn small" onClick={toggle} aria-label="Toggle color theme">
           {theme === 'dark' ? '☀︎ Light' : '☾ Dark'}
         </button>
       </header>
-      <div className="page">
-        {/* Unknown pages (including the hidden #/catalog) show the demo. */}
-        {!['code', 'docs'].includes(page) && <Gallery focus={focus} />}
-        {page === 'code' && <CodePage id={parts[1]} />}
-        {page === 'docs' && <DocsPage />}
+      <div className="shell">
+        <Sidebar current={current} open={menu} onNavigate={() => setMenu(false)} />
+        {menu && <div className="scrim" onClick={() => setMenu(false)} />}
+        <main className="main">
+          {/* Unknown pages (including the hidden #/catalog) show the overview. */}
+          {!isCode && page !== 'docs' && <Gallery focus={focus} />}
+          {isCode && <CodePage id={parts[1]} />}
+          {page === 'docs' && <DocsPage />}
+        </main>
       </div>
     </>
   );

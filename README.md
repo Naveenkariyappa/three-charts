@@ -10,7 +10,7 @@
 
 ### 1. Find your chart
 
-Open the site, browse **Demo** (every chart live, hover and zoom them), then click **View code** on the one you want. Pick your language at the top: **React · TS**, **React · JS**, **TypeScript** or **JavaScript**.
+Open the site and pick a chart in the sidebar (press `/` to search). Each chart has its own page with the live chart, a **Customize** panel and the code. Pick your language above the code: **React · TS**, **React · JS**, **TypeScript** or **JavaScript**.
 
 ### 2. Add it
 

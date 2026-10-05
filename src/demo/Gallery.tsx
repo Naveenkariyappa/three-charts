@@ -6,8 +6,6 @@ import { buildOptions, EXAMPLES, type Example } from './examples';
 import { GROUPS } from './examples2';
 import { LiveChart } from './LiveChart';
 
-type Dim = 'all' | '2D' | '3D' | 'large';
-
 /** Mounts the chart (and generates its data) only once the card is near the viewport. */
 function LazyChart({ ex }: { ex: Example }) {
   const box = useRef<HTMLDivElement>(null);
@@ -53,7 +51,9 @@ function Card({ ex }: { ex: Example }) {
   return (
     <article className="card" id={`ex-${ex.id}`}>
       <header>
-        <h3>{ex.title}</h3>
+        <h3>
+          <a href={`#/code/${ex.id}`}>{ex.title}</a>
+        </h3>
       </header>
       <p className="blurb">{ex.blurb}</p>
       <LazyChart ex={ex} />
@@ -69,35 +69,36 @@ function Card({ ex }: { ex: Example }) {
   );
 }
 
-export function Gallery({ focus }: { focus?: string }) {
-  const [group, setGroup] = useState<string>('all');
-  const [dim, setDim] = useState<Dim>('all');
+/** One line per category, saying what its charts are for. */
+const ABOUT: Record<string, string> = {
+  Comparison: 'Compare values across categories: bars, dots, ranges, bullets.',
+  Trend: 'Change over time, from sparklines to streaming lines and range navigators.',
+  Distribution: 'The shape of a set of values: histograms, boxes, violins, swarms.',
+  'Part-to-whole': 'Shares of a total: pies, waffles, funnels, Venn diagrams.',
+  Hierarchy: 'Nested data: treemaps, sunbursts, trees, packed circles.',
+  Relationship: 'How variables move together: scatter, hexbin, contour, parallel coordinates.',
+  Network: 'Nodes and links in 2D and 3D, chords and arc diagrams.',
+  'Flow & time': 'Movement between stages and schedules: Sankey, Gantt, calendars.',
+  KPI: 'One number and how it is doing: gauges, rings, stat tiles.',
+  'Machine learning': 'Model evaluation: confusion matrices and ROC curves.',
+  Financial: 'Prices and indicators: candles, depth, MACD, RSI, Renko.',
+  Geo: 'Maps, from choropleths and bubbles to a 3D globe.',
+  '3D & scientific': 'Surfaces, meshes, vector fields and isosurfaces.',
+};
 
+const FEATURED = 3;
+
+export function Gallery({ focus }: { focus?: string }) {
+  // Old "see it live" links pointed at the overview; each chart now has its own page.
   useEffect(() => {
-    if (!focus) return;
-    setGroup('all');
-    setDim('all');
-    // Wait a frame so the card exists after the filter reset.
-    const r = requestAnimationFrame(() => {
-      const el = document.getElementById(`ex-${focus}`);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el?.classList.add('flash');
-      setTimeout(() => el?.classList.remove('flash'), 1600);
-    });
-    return () => cancelAnimationFrame(r);
+    if (focus) location.replace(`#/code/${focus}`);
   }, [focus]);
 
-  const match = (e: Example) =>
-    (group === 'all' || e.group === group) && (dim === 'all' || (dim === 'large' ? !!e.scale : e.dim === dim));
-  const list = EXAMPLES.filter(match);
-  const groups = GROUPS.filter((g) => list.some((e) => e.group === g));
-  // On the unfiltered page the stream is the hero; it joins the grid only when Trend is picked.
-  const showLive = group === 'Trend' && (dim === 'all' || dim === '2D');
   const count = EXAMPLES.length + 1;
   const types = new Set(EXAMPLES.map((e) => e.type)).size;
 
   return (
-    <>
+    <div className="overview">
       <section className="hero">
         <div>
           <h1>
@@ -108,67 +109,50 @@ export function Gallery({ focus }: { focus?: string }) {
             its file, and the code is yours. React or plain TypeScript; three.js is the only dependency.
           </p>
           <div className="row">
-            <a className="btn primary" href="#/?focus=charts" onClick={(e) => (e.preventDefault(), document.getElementById('charts')?.scrollIntoView({ behavior: 'smooth' }))}>
-              Browse {count} examples
+            <a className="btn primary" href="#/code/bar">
+              Open the first chart
             </a>
             <a className="btn" href="#/docs">
               How to use them
             </a>
           </div>
+          <p className="meta hint">
+            Every chart is live: hover for values, click legend items to hide series, drag to pan or orbit. Press <kbd>/</kbd> to find one of {count}{' '}
+            examples.
+          </p>
         </div>
         <LiveChart bench height={260} />
       </section>
-      <section className="intro" id="charts">
-        <p>
-          Hover for values. Click a legend item to hide its series, double-click to show only that one. Drag to pan or orbit; click a chart (or hold Ctrl/⌘) and
-          scroll to zoom. Every chart's page has a Customize panel for colors, legend and fonts.
-        </p>
-        <div className="filters" role="group" aria-label="Filter by category">
-          {['all', ...GROUPS].map((g) => (
-            <button key={g} className={group === g ? 'chip on' : 'chip'} aria-pressed={group === g} onClick={() => setGroup(g)}>
-              {g === 'all' ? 'All' : g}
-            </button>
-          ))}
-        </div>
-        <div className="filters" role="group" aria-label="Filter by kind" style={{ marginTop: 8 }}>
-          {(['all', '2D', '3D', 'large'] as Dim[]).map((d) => (
-            <button key={d} className={dim === d ? 'chip on' : 'chip'} aria-pressed={dim === d} onClick={() => setDim(d)}>
-              {d === 'all' ? 'Any size' : d === 'large' ? 'Large data' : d}
-            </button>
-          ))}
-        </div>
-      </section>
 
-      {groups.map((g) => (
-        <section key={g} className="group">
-          <h2 className="group-title">
-            {g} <span className="meta">{list.filter((e) => e.group === g).length + (g === 'Trend' && showLive ? 1 : 0)}</span>
-          </h2>
-          <div className="grid">
-            {g === 'Trend' && showLive && (
-              <article className="card" id="ex-live">
-                <header>
-                  <h3>Live streaming line</h3>
-                  <span className="badge">2D</span>
-                  <span className="badge accent">20 updates/s</span>
-                </header>
-                <p className="blurb">
-                  Data pushed through <code>ref.update()</code> without re-rendering React.
-                </p>
-                <LiveChart />
-                <footer>
-                  <a href="#/code/live">View code →</a>
-                </footer>
-              </article>
-            )}
-            {list
-              .filter((e) => e.group === g)
-              .map((ex) => (
+      {GROUPS.map((g) => {
+        const all = EXAMPLES.filter((e) => e.group === g);
+        return (
+          <section key={g} className="group" id={`group-${g.toLowerCase().replace(/[^a-z]+/g, '-')}`}>
+            <header className="group-head">
+              <h2>{g}</h2>
+              <span className="count">{all.length + (g === 'Trend' ? 1 : 0)}</span>
+              <p>{ABOUT[g]}</p>
+            </header>
+            <div className="grid">
+              {all.slice(0, FEATURED).map((ex) => (
                 <Card key={ex.id} ex={ex} />
               ))}
-          </div>
-        </section>
-      ))}
-    </>
+            </div>
+            <ul className="more">
+              {all.slice(FEATURED).map((ex) => (
+                <li key={ex.id}>
+                  <a href={`#/code/${ex.id}`}>{ex.title}</a>
+                </li>
+              ))}
+              {g === 'Trend' && (
+                <li>
+                  <a href="#/code/live">Live streaming line</a>
+                </li>
+              )}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
   );
 }

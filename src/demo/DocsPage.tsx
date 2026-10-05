@@ -17,7 +17,8 @@ export function DocsPage() {
 
       <h2>1. Find your chart</h2>
       <p>
-        Browse the <a href="#/">Demo</a> (every chart is live: hover it, zoom it), then click <b>View code</b> on the one you want. Pick your language at the top:{' '}
+        Pick a chart in the sidebar (press <kbd>/</kbd> to search, or browse the <a href="#/">overview</a>). Each chart has its own page with the live chart, a
+        Customize panel and the code. Pick your language above the code:{' '}
         <b>React · TS</b>, <b>React · JS</b>, <b>TypeScript</b> or <b>JavaScript</b>.
       </p>
 
@@ -87,7 +88,7 @@ export function DocsPage() {
       <h2>4. Customize it</h2>
       <p>
         Every chart takes the same color, text and legend options. The quickest way to get them right is the <b>Customize</b> panel on each chart's page in{' '}
-        <a href="#/code">Code</a>: change colors, the legend and fonts on a live chart, and the usage code updates to match.
+        the site: change colors, the legend and fonts on a live chart, and the usage code updates to match.
       </p>
       <CodeBlock file="options" code={CUSTOMIZE_CODE} />
       <div className="table-wrap">
@@ -155,7 +156,7 @@ export function DocsPage() {
       <h2>What's available</h2>
       <p>
         {Object.keys(COMPONENT).length} chart types across comparison, trend, distribution, part-to-whole, hierarchy, relationship, network, flow, KPI, machine
-        learning, financial, geo and 3D. See them all in the <a href="#/">Demo</a>, and how they compare with 25 other charting libraries in{' '}
+        learning, financial, geo and 3D. See them all in the <a href="#/">overview</a>, and how they compare with 25 other charting libraries in{' '}
         <a href="https://github.com/Naveenkariyappa/three-charts/blob/main/CHARTS.md">CHARTS.md</a>.
       </p>
     </article>
