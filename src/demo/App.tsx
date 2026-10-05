@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { CatalogPage } from './CatalogPage';
 import { CodePage } from './CodePage';
 import { DocsPage } from './DocsPage';
 import { Gallery } from './Gallery';
@@ -63,10 +62,9 @@ export function App() {
           three-charts
         </a>
         <nav>
-          {link('#/', 'Demo', page === '')}
+          {link('#/', 'Demo', !['code', 'docs'].includes(page))}
           {link('#/docs', 'Docs', page === 'docs')}
           {link('#/code', 'Code', page === 'code')}
-          {link('#/catalog', 'Catalog', page === 'catalog')}
           <a href="vanilla.html">Vanilla page</a>
         </nav>
         <button className="btn small" onClick={toggle} aria-label="Toggle color theme">
@@ -74,9 +72,9 @@ export function App() {
         </button>
       </header>
       <div className="page">
-        {page === '' && <Gallery focus={focus} />}
+        {/* Unknown pages (including the hidden #/catalog) show the demo. */}
+        {!['code', 'docs'].includes(page) && <Gallery focus={focus} />}
         {page === 'code' && <CodePage id={parts[1]} />}
-        {page === 'catalog' && <CatalogPage />}
         {page === 'docs' && <DocsPage />}
       </div>
     </>

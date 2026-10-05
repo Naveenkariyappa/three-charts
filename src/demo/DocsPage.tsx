@@ -122,7 +122,7 @@ export function DocsPage() {
       <h2>What's available</h2>
       <p>
         105 chart types across comparison, trend, distribution, part-to-whole, hierarchy, relationship, network, flow, KPI, machine learning, financial, geo and 3D. See
-        them in the <a href="#/">Demo</a>, or the <a href="#/catalog">Catalog</a> for how they map to chart types found in other libraries.
+        them all in the <a href="#/">Demo</a>.
       </p>
     </article>
   );

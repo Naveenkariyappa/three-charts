@@ -177,7 +177,7 @@ npm run build      # type-check source and generated files, build the site into 
 
 - `src/core/`: the charts (single source of truth).
 - `src/react/chart-react.tsx`: the React wrapper every React chart file uses.
-- `src/demo/`: the demo site (gallery, Code page, catalog). Examples live in `examples.ts` and `examples2.ts`; each one is source text that the gallery runs and the Code page prints.
+- `src/demo/`: the demo site (gallery, Docs, Code page). `CatalogPage.tsx` and `catalog.ts` (chart types across other libraries) are kept but not linked; add the route back in `App.tsx` to show it. Examples live in `examples.ts` and `examples2.ts`; each one is source text that the gallery runs and the Code page prints.
 - `scripts/registry.mjs`: turns `src/core` into the copy-paste files.
 - `public/vanilla.html`: plain HTML page that uses the copied JavaScript files.
 
