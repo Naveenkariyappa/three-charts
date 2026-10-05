@@ -5,6 +5,8 @@ export interface ChartHandle {
   update(options: Partial<ChartOptions>): void;
   resetView(): void;
   toPNG(): string;
+  toCSV(): string | null;
+  download(format?: 'png' | 'csv', filename?: string): void;
 }
 
 interface BoxProps {
@@ -77,6 +79,8 @@ export const ThreeChart = forwardRef<ChartHandle, ThreeChartProps>(function Thre
     update: (o) => chart.current?.update(o),
     resetView: () => chart.current?.resetView(),
     toPNG: () => chart.current?.toPNG() ?? '',
+    toCSV: () => chart.current?.toCSV() ?? null,
+    download: (format, filename) => chart.current?.download(format, filename),
   }));
 
   return <div ref={el} className={className} style={{ height, position: 'relative', ...style }} />;

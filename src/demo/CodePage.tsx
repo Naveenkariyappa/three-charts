@@ -381,13 +381,14 @@ function ChartDoc({
               )}
             </li>
             <li>
-              Pass a ref for imperative control: <code>ref.current.update(options)</code>, <code>resetView()</code>, <code>toPNG()</code>, <code>chart()</code>.
+              Pass a ref for imperative control: <code>ref.current.update(options)</code>, <code>resetView()</code>, <code>download('png' | 'csv')</code>,{' '}
+              <code>toPNG()</code>, <code>toCSV()</code>, <code>chart()</code>.
             </li>
           </>
         ) : (
           <li>
-            <code>create{comp}(element, options)</code> returns the chart: <code>update(options)</code>, <code>resetView()</code>, <code>toPNG()</code>,{' '}
-            <code>destroy()</code>.
+            <code>create{comp}(element, options)</code> returns the chart: <code>update(options)</code>, <code>resetView()</code>, <code>download('png' | 'csv')</code>,{' '}
+            <code>toPNG()</code>, <code>toCSV()</code>, <code>destroy()</code>.
           </li>
         )}
         <li>

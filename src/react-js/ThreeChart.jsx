@@ -61,6 +61,8 @@ export const ThreeChart = forwardRef(function ThreeChart(props, ref) {
     update: (o) => chart.current?.update(o),
     resetView: () => chart.current?.resetView(),
     toPNG: () => chart.current?.toPNG() ?? '',
+    toCSV: () => chart.current?.toCSV() ?? null,
+    download: (format, filename) => chart.current?.download(format, filename),
   }));
 
   return <div ref={el} className={className} style={{ height, position: 'relative', ...style }} />;

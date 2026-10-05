@@ -20,6 +20,7 @@ export interface Custom {
   title: string;
   background: string | null;
   tooltip: boolean;
+  download: boolean;
   animate: boolean;
   grid: boolean;
 }
@@ -41,6 +42,7 @@ export const DEFAULT_CUSTOM: Custom = {
   title: '',
   background: null,
   tooltip: true,
+  download: true,
   animate: true,
   grid: true,
 };
@@ -148,6 +150,7 @@ export function customOptions(c: Custom, type: ChartType): { values: Record<stri
 
   if (c.background) put('background', c.background);
   if (!c.tooltip) put('tooltip', false);
+  if (!c.download) put('download', false);
   if (!c.animate) put('animate', false);
   if (f.cartesian && !c.grid) put('grid', false);
   return { values, code };

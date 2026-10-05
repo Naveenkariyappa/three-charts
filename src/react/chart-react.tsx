@@ -8,6 +8,8 @@ export interface ChartInstance<O> {
   update(options: Partial<O>): void;
   resetView(): void;
   toPNG(): string;
+  toCSV(): string | null;
+  download(format?: 'png' | 'csv', filename?: string): void;
   destroy(): void;
 }
 
@@ -17,8 +19,12 @@ export interface ChartHandle<O, C = ChartInstance<O>> {
   update(options: Partial<Omit<O, 'type'>>): void;
   /** Reset zoom / camera. */
   resetView(): void;
-  /** PNG data URL of the chart. */
+  /** PNG data URL of the whole chart: plot, labels, legend and title. */
   toPNG(): string;
+  /** The chart's data as CSV, or null when it isn't a table. */
+  toCSV(): string | null;
+  /** Save the chart as a PNG image or its data as a CSV file. */
+  download(format?: 'png' | 'csv', filename?: string): void;
   /** The underlying chart instance, or null before mount. */
   chart(): C | null;
 }
@@ -101,6 +107,8 @@ export function chartComponent<O extends CommonOptions & { type: string }, C ext
         update: (o) => chart.current?.update(o as Partial<O>),
         resetView: () => chart.current?.resetView(),
         toPNG: () => chart.current?.toPNG() ?? '',
+        toCSV: () => chart.current?.toCSV() ?? null,
+        download: (format, filename) => chart.current?.download(format, filename),
         chart: () => chart.current,
       }),
       [],

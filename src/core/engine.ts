@@ -85,6 +85,12 @@ class Engine {
 
   private failed = new WeakSet<EngineClient>();
 
+  /** Paint one chart right now, even off screen (e.g. to export it). */
+  paintNow(c: EngineClient) {
+    c.dirty = false;
+    this.paint(c);
+  }
+
   private paint(c: EngineClient) {
     const w = c.pixelWidth;
     const h = c.pixelHeight;

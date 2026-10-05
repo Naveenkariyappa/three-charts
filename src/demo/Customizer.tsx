@@ -254,6 +254,10 @@ export function CustomPanel({ ex, custom, setCustom }: { ex: Example; custom: Cu
               Tooltip
             </label>
             <label className="check">
+              <input type="checkbox" checked={custom.download} onChange={(e) => set('download', e.target.checked)} />
+              Download button
+            </label>
+            <label className="check">
               <input type="checkbox" checked={custom.animate} onChange={(e) => set('animate', e.target.checked)} />
               Entry animation
             </label>

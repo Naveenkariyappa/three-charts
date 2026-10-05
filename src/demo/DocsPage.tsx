@@ -83,7 +83,8 @@ export function DocsPage() {
       {flavour === 'react-ts' && (
         <p className="meta">
           Every chart exports <code>&lt;Name&gt;Props</code> (its options plus <code>height</code>, <code>className</code>, <code>style</code>) and{' '}
-          <code>&lt;Name&gt;Handle</code> (the ref: <code>update</code>, <code>resetView</code>, <code>toPNG</code>, <code>chart</code>).
+          <code>&lt;Name&gt;Handle</code> (the ref: <code>update</code>, <code>resetView</code>, <code>download</code>, <code>toPNG</code>, <code>toCSV</code>,{' '}
+          <code>chart</code>).
         </p>
       )}
       {flavour === 'ts' && (
@@ -123,6 +124,13 @@ export function DocsPage() {
         A series' own <code>color</code> (or a slice's, a node's…) wins over <code>colors</code>. Text and legend always use the text colors, never the series color,
         so they stay readable.
       </p>
+
+      <h2>5. Let people download it</h2>
+      <p>
+        Every chart has a download button in its top-right corner (it appears on hover, and stays visible on touch screens). It saves the chart as a{' '}
+        <b>PNG</b> exactly as shown, with labels, legend and title, or its data as a <b>CSV</b> file that opens in Excel or Google Sheets.
+      </p>
+      <CodeBlock file="options" code={DOWNLOAD_CODE} />
 
       <h2>Good to know</h2>
       <ul className="notes">
@@ -217,4 +225,15 @@ const CUSTOMIZE_ROWS: [string, string][] = [
   ['legend', 'false hides it, true always shows it, or an object: show, position, align, marker, toggle, hidden, format, onToggle.'],
   ['theme / background', "Force 'light' or 'dark'; paint a background color (default transparent)."],
   ['tooltip / animate / grid', 'Turn the tooltip, the entry animation or (charts with axes) the grid off.'],
+  ['download', 'false hides the download button, or { formats, filename }.'],
 ];
+
+const DOWNLOAD_CODE = `// Hide the button, or limit and name the downloads:
+download: false,
+download: { formats: ['png'], filename: 'q3-revenue' },
+
+// From your own button or menu:
+chart.download('png');            // React: ref.current.download('png')
+chart.download('csv', 'revenue');
+const dataUrl = chart.toPNG();    // e.g. to attach to an email or a report
+const csv = chart.toCSV();        // null when the data isn't a table (a 3D mesh)`;

@@ -58,7 +58,7 @@ export function Revenue({ sales }: { sales: number[] }) {
 }
 ```
 
-Every chart exports `<Name>Props` (its options plus `height`, `className`, `style`) and `<Name>Handle` (the ref: `update`, `resetView`, `toPNG`, `chart`).
+Every chart exports `<Name>Props` (its options plus `height`, `className`, `style`) and `<Name>Handle` (the ref: `update`, `resetView`, `download`, `toPNG`, `toCSV`, `chart`).
 
 **React + JavaScript**
 
@@ -174,6 +174,22 @@ Every chart takes the same color, text and legend options. The **Customize** pan
 - `legend: false` hides the legend, `legend: true` always shows it (by default it appears for 2+ series).
 - A series' own `color` (or a slice's, a node's…) wins over `colors`.
 - From code: `chart.toggleSeries(name)` hides or shows a series and `chart.hiddenSeries()` lists the hidden ones (in React, `ref.current.chart()`).
+
+### 5. Let people download it
+
+Every chart has a download button in its top-right corner (it appears on hover, and stays visible on touch screens). It saves the chart as a **PNG** exactly as shown, with labels, legend and title, or its data as a **CSV** file that opens in Excel or Google Sheets.
+
+```ts
+// Hide the button, or limit and name the downloads:
+download: false,
+download: { formats: ['png'], filename: 'q3-revenue' },
+
+// From your own button or menu:
+chart.download('png');            // React: ref.current.download('png')
+chart.download('csv', 'revenue');
+const dataUrl = chart.toPNG();    // e.g. to attach to an email or a report
+const csv = chart.toCSV();        // null when the data isn't a table (a 3D mesh)
+```
 
 ### Good to know
 

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { getEngine, shared, type EngineClient } from './engine';
 import { customTheme, seriesColor, type Theme } from './theme';
 import { escapeHtml } from './scale';
-import type { Chart, CommonOptions, HitInfo, LegendOptions } from './types';
+import type { Chart, CommonOptions, DownloadOptions, HitInfo, LegendOptions } from './types';
 
 /** Internal hit result: public HitInfo plus what the tooltip needs. */
 export interface Hit extends HitInfo {
@@ -57,6 +57,18 @@ const CSS = `
 .tc-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;padding:6px 10px;border-radius:6px;
   background:var(--tc-tip-bg);border:1px solid var(--tc-border);color:var(--tc-text2);font-size:12px;opacity:0;transition:opacity .2s}
 .tc-hint.tc-show{opacity:1}
+.tc-dl{position:absolute;top:6px;right:6px;z-index:3;display:grid;place-items:center;width:28px;height:28px;padding:0;border-radius:6px;
+  border:1px solid var(--tc-border);background:var(--tc-tip-bg);color:var(--tc-text2);cursor:pointer;opacity:0;transition:opacity .15s}
+.tc-stage:hover .tc-dl,.tc-dl:focus-visible,.tc-dl[aria-expanded=true]{opacity:1}
+.tc-dl:hover{color:var(--tc-text)}
+.tc-dl:focus-visible{outline:2px solid var(--tc-text2);outline-offset:1px}
+@media (hover:none){.tc-dl{opacity:.85}}
+.tc-menu{position:absolute;top:38px;right:6px;z-index:4;display:none;min-width:150px;padding:4px;border-radius:8px;background:var(--tc-tip-bg);
+  border:1px solid var(--tc-border);box-shadow:0 4px 16px rgba(0,0,0,.14)}
+.tc-menu.tc-open{display:block}
+.tc-menu button{all:unset;display:block;box-sizing:border-box;width:100%;padding:6px 10px;border-radius:5px;color:var(--tc-text);cursor:pointer;white-space:nowrap}
+.tc-menu button:hover,.tc-menu button:focus-visible{background:var(--tc-border)}
+.tc-menu button span{color:var(--tc-muted);margin-left:6px}
 .tc-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
 .tc-center .tc-big{font-size:22px;font-weight:600;color:var(--tc-text)}
 .tc-center .tc-small{font-size:12px;color:var(--tc-text2)}
@@ -118,6 +130,188 @@ export class LabelPool {
   }
 }
 
+function downloadOptions(d: boolean | DownloadOptions | undefined): DownloadOptions {
+  return typeof d === 'object' ? d : {};
+}
+
+/** Columns and rows for CSV export. */
+export interface Table {
+  columns: string[];
+  rows: (string | number)[][];
+}
+
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'chart';
+
+function saveFile(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function csvCell(v: string | number): string {
+  const s = typeof v === 'number' ? (Number.isFinite(v) ? String(v) : '') : v;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Product of the element's and its ancestors' opacity (dimmed legend items stay dimmed in the image). */
+function opacityOf(el: Element, stop: Element): number {
+  let o = 1;
+  for (let e: Element | null = el; e && e !== stop; e = e.parentElement) o *= parseFloat(getComputedStyle(e).opacity) || 1;
+  return o;
+}
+
+/** `text`, cut with an ellipsis to fit `max` px. */
+function fitText(g: CanvasRenderingContext2D, text: string, max: number): string {
+  if (g.measureText(text).width <= max) return text;
+  let t = text;
+  while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1);
+  return t + '…';
+}
+
+type Rec = Record<string, unknown>;
+const isNums = (a: unknown): a is ArrayLike<number> =>
+  !!a && typeof a === 'object' && typeof (a as ArrayLike<unknown>).length === 'number' && ((a as ArrayLike<unknown>).length === 0 || typeof (a as ArrayLike<unknown>)[0] === 'number');
+const isStrs = (a: unknown): a is string[] => Array.isArray(a) && a.length > 0 && typeof a[0] === 'string';
+const isRecs = (a: unknown): a is Rec[] => Array.isArray(a) && a.length > 0 && typeof a[0] === 'object' && a[0] !== null && !Array.isArray(a[0]);
+const cell = (v: unknown): string | number => (typeof v === 'number' ? v : typeof v === 'string' ? v : typeof v === 'boolean' ? String(v) : '');
+
+/**
+ * Read a chart's data out of its options as a table. Covers the shapes the options use: categories × series,
+ * x/y series, parallel number arrays (OHLC), matrices, records, trees and key → value maps.
+ */
+export function tabulate(o: Rec): Table | null {
+  // Meshes are geometry, not a table.
+  if (isNums(o.indices)) return null;
+  const time = (o.xAxis as Rec | undefined)?.type === 'time';
+  const fmtX = (v: number) => (time || v > 1e11 ? new Date(v).toISOString() : v);
+  // Epoch-ms fields read as dates in a spreadsheet; anything this large in a time-named field is a timestamp.
+  const dated = (k: string, v: unknown) => (typeof v === 'number' && v > 1e11 && /^(x|start|end|date|dates|time)$/.test(k) ? new Date(v).toISOString() : cell(v));
+  const cats = (isStrs(o.categories) && o.categories) || (isStrs(o.axes) && o.axes) || (isStrs(o.labels) && o.labels) || null;
+  const hasNums = (r: Rec) => Object.values(r).some(isNums);
+  // A list of named series, under any of the names the options use, or named objects at the top level (a / b, left / right).
+  const listKey = ['series', 'groups', 'bands', 'levels', 'dimensions'].find((k) => isRecs(o[k]) && (o[k] as Rec[]).some(hasNums));
+  const named = Object.values(o).filter((v): v is Rec => !!v && typeof v === 'object' && !Array.isArray(v) && typeof (v as Rec).name === 'string' && hasNums(v as Rec));
+  const series = listKey ? (o[listKey] as Rec[]) : named.length > 1 ? named : null;
+  const valuesOf = (s: Rec) => (s.data ?? s.values ?? s.y) as ArrayLike<number> | undefined;
+  const names = (list: Rec[]) => list.map((s) => String(s.name ?? ''));
+
+  if (series) {
+    const vals = series.map(valuesOf);
+    const n = vals[0]?.length ?? 0;
+    const same = vals.every((v) => isNums(v) && v.length === n) && series.every((s) => !isNums(s.x));
+    // Wide: one row per category (bars, levels, pyramid), per point of a shared x, or per record (dimensions).
+    const lead: [string, (i: number) => string | number] | null =
+      cats && cats.length === n ? [o.axes ? 'axis' : 'category', (i) => cats[i]] : isNums(o.x) && o.x.length === n ? ['x', (i) => fmtX((o.x as ArrayLike<number>)[i])] : listKey === 'dimensions' ? ['row', (i) => i + 1] : null;
+    if (same && lead) {
+      return { columns: [lead[0], ...names(series)], rows: Array.from({ length: n }, (_, i) => [lead[1](i), ...vals.map((v) => cell(v![i]))]) };
+    }
+    // Long: one row per point, with every per-point field the series carry.
+    const keys: string[] = [];
+    for (const s of series) for (const k in s) if (!keys.includes(k) && (isNums(s[k]) || (isStrs(s[k]) && k !== 'name'))) keys.push(k);
+    const rows: (string | number)[][] = [];
+    for (const s of series) {
+      const len = Math.max(0, ...keys.map((k) => (s[k] as ArrayLike<unknown> | undefined)?.length ?? 0));
+      for (let i = 0; i < len; i++) {
+        rows.push([
+          String(s.name ?? ''),
+          ...keys.map((k) => {
+            const v = (s[k] as ArrayLike<unknown> | undefined)?.[i];
+            return k === 'x' && typeof v === 'number' ? fmtX(v) : dated(k, v);
+          }),
+        ]);
+      }
+    }
+    if (keys.length) return { columns: ['series', ...keys], rows };
+  }
+
+  // Matrices: row, column, value.
+  const grid = (data: ArrayLike<number>, rowNames: (string | number)[], colNames: (string | number)[]): Table => {
+    const rows: (string | number)[][] = [];
+    for (let r = 0; r < rowNames.length; r++) for (let c = 0; c < colNames.length; c++) rows.push([rowNames[r], colNames[c], cell(data[r * colNames.length + c])]);
+    return { columns: ['row', 'column', 'value'], rows };
+  };
+  const idx = (n: number) => Array.from({ length: n }, (_, i) => i);
+  if (isNums(o.data) && typeof o.rows === 'number' && typeof o.cols === 'number') {
+    const yl = (o.yLabels as string[] | undefined) ?? [];
+    const xl = (o.xLabels as string[] | undefined) ?? [];
+    return grid(o.data, idx(o.rows).map((r) => yl[r] ?? r), idx(o.cols).map((c) => xl[c] ?? c));
+  }
+  if (isNums(o.data) && isStrs(o.rings) && isStrs(o.angles) && o.data.length === o.rings.length * o.angles.length) return grid(o.data, o.rings, o.angles);
+  if (Array.isArray(o.matrix) && Array.isArray(o.matrix[0])) {
+    const m = o.matrix as number[][];
+    const labels = (cats ?? (o.names as string[] | undefined) ?? (o.classes as string[] | undefined) ?? []) as string[];
+    return { columns: ['', ...m[0].map((_, j) => labels[j] ?? String(j))], rows: m.map((row, i) => [labels[i] ?? String(i), ...row]) };
+  }
+
+  // Parallel number arrays at the top level (open / high / low / close, values…).
+  const arrays = Object.keys(o).filter((k) => isNums(o[k]) && (o[k] as ArrayLike<number>).length > 1);
+  if (arrays.length) {
+    const n = Math.max(...arrays.map((k) => (o[k] as ArrayLike<number>).length));
+    const cols = arrays.filter((k) => (o[k] as ArrayLike<number>).length === n);
+    const lab = cats && cats.length === n ? cats : null;
+    return {
+      columns: [...(lab ? ['label'] : []), ...cols],
+      rows: Array.from({ length: n }, (_, i) => [...(lab ? [lab[i]] : []), ...cols.map((k) => (k === 'x' ? fmtX((o[k] as ArrayLike<number>)[i]) : dated(k, (o[k] as ArrayLike<number>)[i])))]),
+    };
+  }
+
+  // Records: the first array of objects among the usual names. Nested objects become a.b columns,
+  // string lists are joined (or spread over `dimensions`, as in alluvial rows).
+  const dims = isStrs(o.dimensions) ? o.dimensions : null;
+  for (const k of ['data', 'items', 'tasks', 'events', 'words', 'points', 'flows', 'links', 'nodes', 'bids', 'rows', 'rings', 'tiles']) {
+    const list = o[k];
+    if (!isRecs(list)) continue;
+    const flat = list.map((r) => {
+      const out: Record<string, string | number> = {};
+      for (const [c, v] of Object.entries(r)) {
+        if (c === 'color' || typeof v === 'function') continue;
+        if (isStrs(v)) {
+          if (dims && c === 'values' && v.length === dims.length) v.forEach((x, i) => (out[dims[i]] = x));
+          else out[c] = v.join(' & ');
+        } else if (v && typeof v === 'object' && !Array.isArray(v) && !isNums(v)) {
+          for (const [c2, v2] of Object.entries(v as Rec)) if (typeof v2 !== 'object') out[`${c}.${c2}`] = cell(v2);
+        } else if (isNums(v) && v.length <= 3) out[c] = Array.from(v).join(' ');
+        else if (typeof v !== 'object' || v === null) out[c] = dated(c, v);
+      }
+      return out;
+    });
+    const cols: string[] = [];
+    for (const r of flat) for (const c in r) if (!cols.includes(c)) cols.push(c);
+    if (cols.length) return { columns: cols, rows: flat.map((r) => cols.map((c) => r[c] ?? '')) };
+  }
+
+  // Tree: one row per node, with its path.
+  const tree = (o.data ?? o.root) as Rec | undefined;
+  if (tree && typeof tree === 'object' && Array.isArray(tree.children)) {
+    const rows: (string | number)[][] = [];
+    const walk = (n: Rec, path: string[]) => {
+      const p = [...path, String(n.name ?? n.label ?? '')];
+      rows.push([p.join(' / '), p.length - 1, cell(n.value)]);
+      for (const c of (n.children as Rec[] | undefined) ?? []) walk(c, p);
+    };
+    walk(tree, []);
+    return { columns: ['path', 'depth', 'value'], rows };
+  }
+
+  // Key → value maps, optionally one level deep (key → { a: 1, b: 2 }).
+  const map = o.values;
+  if (map && typeof map === 'object' && !Array.isArray(map) && !isNums(map)) {
+    const entries = Object.entries(map as Rec);
+    const sub: string[] = [];
+    for (const [, v] of entries) if (v && typeof v === 'object') for (const c in v as Rec) if (!sub.includes(c)) sub.push(c);
+    if (sub.length) return { columns: ['key', ...sub], rows: entries.map(([k, v]) => [k, ...sub.map((c) => (typeof v === 'object' && v ? cell((v as Rec)[c]) : c === sub[0] ? cell(v) : ''))]) };
+    const rows = entries.filter(([, v]) => typeof v === 'number' || typeof v === 'string').map(([k, v]) => [k, cell(v)]);
+    if (rows.length) return { columns: ['key', 'value'], rows };
+  }
+  if (typeof o.value === 'number') return { columns: ['label', 'value'], rows: [[String(o.label ?? o.title ?? ''), o.value]] };
+  return null;
+}
+
 /** `legend` accepts a boolean shorthand; normalize it. */
 export function legendOptions(legend: boolean | LegendOptions | undefined): LegendOptions {
   if (legend === undefined) return {};
@@ -170,6 +364,8 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
   /** Wheel-zoom is armed by clicking into the chart, so page scrolling never gets trapped. */
   protected wheelArmed = false;
   private hintEl: HTMLDivElement;
+  private dlBtn: HTMLButtonElement;
+  private menuEl: HTMLDivElement;
   private hintTimer = 0;
   private releaseTimer = 0;
   private ro: ResizeObserver;
@@ -201,7 +397,24 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
     this.hintEl = document.createElement('div');
     this.hintEl.className = 'tc-hint';
     this.hintEl.textContent = 'Click the chart (or hold Ctrl/⌘) to zoom with the wheel';
-    this.stage.append(this.canvas, this.overlay, this.tooltipEl, this.hintEl);
+    this.dlBtn = document.createElement('button');
+    this.dlBtn.type = 'button';
+    this.dlBtn.className = 'tc-dl';
+    this.dlBtn.setAttribute('aria-label', 'Download chart');
+    this.dlBtn.setAttribute('aria-haspopup', 'menu');
+    this.dlBtn.setAttribute('aria-expanded', 'false');
+    this.dlBtn.title = 'Download';
+    this.dlBtn.innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.5v7.5M3.8 6 7 9.2 10.2 6M2 12.5h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    this.dlBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleMenu();
+    });
+    this.menuEl = document.createElement('div');
+    this.menuEl.className = 'tc-menu';
+    this.menuEl.setAttribute('role', 'menu');
+    this.menuEl.addEventListener('click', (e) => e.stopPropagation());
+    this.stage.append(this.canvas, this.overlay, this.tooltipEl, this.hintEl, this.dlBtn, this.menuEl);
     this.bodyEl = document.createElement('div');
     this.bodyEl.className = 'tc-body';
     this.bodyEl.append(this.stage, this.legendEl);
@@ -311,12 +524,30 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
   resetView() {}
 
   toPNG(): string {
-    return this.canvas.toDataURL('image/png');
+    return this.snapshot().toDataURL('image/png');
+  }
+
+  toCSV(): string | null {
+    const t = this.table();
+    if (!t || !t.rows.length) return null;
+    return [t.columns, ...t.rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
+  }
+
+  download(format: 'png' | 'csv' = 'png', filename?: string) {
+    const name = filename ?? downloadOptions(this.opts.download).filename ?? slug(this.opts.title || this.type);
+    if (format === 'csv') {
+      const text = this.toCSV();
+      // The byte-order mark makes Excel read the file as UTF-8.
+      if (text) saveFile(new Blob(['\ufeff' + text], { type: 'text/csv;charset=utf-8' }), `${name}.csv`);
+      return;
+    }
+    this.snapshot().toBlob((b) => b && saveFile(b, `${name}.png`), 'image/png');
   }
 
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.closeMenu();
     getEngine().remove(this);
     this.ro.disconnect();
     this.io.disconnect();
@@ -365,6 +596,8 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
     this.theme = customTheme(this.opts.theme, this.opts);
     this.applyCssVars();
     this.titleEl.textContent = this.opts.title ?? '';
+    this.dlBtn.style.display = this.opts.download === false ? 'none' : '';
+    this.closeMenu();
     this.root.style.background = this.opts.background ?? 'transparent';
     this.disposeScene(this.scene);
     this.scene = new THREE.Scene();
@@ -447,6 +680,141 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
       this.layout();
       this.invalidate();
     }
+  }
+
+  // ---- download ---------------------------------------------------------------
+
+  /** The chart's data as columns and rows, for CSV. Override when the generic reading of the options misses. */
+  protected table(): Table | null {
+    return tabulate(this.opts as unknown as Record<string, unknown>);
+  }
+
+  private toggleMenu() {
+    if (this.menuEl.classList.contains('tc-open')) return this.closeMenu();
+    const formats = downloadOptions(this.opts.download).formats ?? ['png', 'csv'];
+    const items: [string, string, () => void][] = [];
+    if (formats.includes('png')) items.push(['Image', 'PNG', () => this.download('png')]);
+    if (formats.includes('csv') && this.table()?.rows.length) items.push(['Data', 'CSV', () => this.download('csv')]);
+    this.menuEl.textContent = '';
+    for (const [label, ext, run] of items) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'menuitem');
+      b.innerHTML = `${label}<span>.${ext.toLowerCase()}</span>`;
+      b.onclick = () => {
+        this.closeMenu();
+        run();
+      };
+      this.menuEl.appendChild(b);
+    }
+    this.menuEl.classList.add('tc-open');
+    this.dlBtn.setAttribute('aria-expanded', 'true');
+    (this.menuEl.firstElementChild as HTMLElement | null)?.focus();
+    document.addEventListener('click', this.closeMenu);
+    document.addEventListener('keydown', this.onMenuKey);
+  }
+
+  private closeMenu = () => {
+    if (!this.menuEl?.classList.contains('tc-open')) return;
+    this.menuEl.classList.remove('tc-open');
+    this.dlBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', this.closeMenu);
+    document.removeEventListener('keydown', this.onMenuKey);
+  };
+
+  private onMenuKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      this.closeMenu();
+      this.dlBtn.focus();
+    }
+  };
+
+  /** The whole chart as one canvas: background, plot, then every visible label, swatch and title on top. */
+  private snapshot(): HTMLCanvasElement {
+    if (this.progress < 1) {
+      this.progress = 1;
+      this.onProgress();
+    }
+    if (this.built && this.pixelWidth > 0) getEngine().paintNow(this);
+    this.hideTooltip();
+    const root = this.root.getBoundingClientRect();
+    const scale = Math.max(2, this.dpr);
+    const out = document.createElement('canvas');
+    out.width = Math.max(1, Math.round(root.width * scale));
+    out.height = Math.max(1, Math.round(root.height * scale));
+    const g = out.getContext('2d')!;
+    g.scale(scale, scale);
+    g.fillStyle = this.opts.background ?? this.theme.surface;
+    g.fillRect(0, 0, root.width, root.height);
+    const cr = this.canvas.getBoundingClientRect();
+    if (this.canvas.width) g.drawImage(this.canvas, cr.left - root.left, cr.top - root.top, cr.width, cr.height);
+    const stage = this.stage.getBoundingClientRect();
+    const skip = (el: Element) => !!el.closest('.tc-tooltip,.tc-hint,.tc-dl,.tc-menu');
+
+    for (const el of this.root.querySelectorAll<HTMLElement>('.tc-sw, .tc-ramp i')) {
+      if (skip(el)) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width) continue;
+      const cs = getComputedStyle(el);
+      g.globalAlpha = opacityOf(el, this.root);
+      const x = r.left - root.left;
+      const y = r.top - root.top;
+      const stops = cs.backgroundImage.match(/rgba?\([^)]*\)/g);
+      if (stops && stops.length > 1) {
+        const grad = g.createLinearGradient(x, 0, x + r.width, 0);
+        stops.forEach((c, i) => grad.addColorStop(i / (stops.length - 1), c));
+        g.fillStyle = grad;
+      } else g.fillStyle = cs.backgroundColor;
+      const br = cs.borderTopLeftRadius;
+      const radius = br.endsWith('%') ? (Math.min(r.width, r.height) * parseFloat(br)) / 100 : parseFloat(br) || 0;
+      g.beginPath();
+      g.roundRect(x, y, r.width, r.height, Math.min(radius, r.width / 2, r.height / 2));
+      g.fill();
+    }
+
+    const walker = document.createTreeWalker(this.root, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const text = n.textContent?.trim();
+      const el = n.parentElement;
+      if (!text || !el || skip(el)) continue;
+      range.selectNodeContents(n);
+      const r = range.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden') continue;
+      g.save();
+      g.globalAlpha = opacityOf(el, this.root);
+      g.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      g.fillStyle = cs.color;
+      g.textBaseline = 'middle';
+      // Labels inside the plot are clipped to it, as on screen.
+      if (this.stage.contains(el)) {
+        g.beginPath();
+        g.rect(stage.left - root.left, stage.top - root.top, stage.width, stage.height);
+        g.clip();
+      }
+      const label = el.closest<HTMLElement>('.tc-label');
+      const deg = label ? parseFloat(/rotate\((-?[\d.]+)deg\)/.exec(label.style.transform)?.[1] ?? '0') : 0;
+      const cx = r.left - root.left + r.width / 2;
+      const cy = r.top - root.top + r.height / 2;
+      if (deg) {
+        g.translate(cx, cy);
+        g.rotate((deg * Math.PI) / 180);
+        g.textAlign = 'center';
+        g.fillText(text, 0, 0);
+      } else {
+        g.textAlign = 'left';
+        const x = r.left - root.left;
+        const max = label?.classList.contains('tc-clip') ? label.getBoundingClientRect().width : Infinity;
+        g.fillText(fitText(g, text, max), x, cy);
+        if (cs.textDecorationLine.includes('line-through')) {
+          g.fillRect(x, cy, Math.min(max, g.measureText(text).width), 1);
+        }
+      }
+      g.restore();
+    }
+    return out;
   }
 
   /** Rebuild the legend (e.g. after a layout changed a color scale's range). */

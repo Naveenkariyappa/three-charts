@@ -32,12 +32,21 @@ export interface CommonOptions {
   /** Shown automatically for 2+ series. `false` hides it, `true` always shows it, or pass options. */
   legend?: boolean | LegendOptions;
   tooltip?: boolean;
+  /** Download button in the chart's corner: PNG image and CSV data. Default true; `false` hides it. */
+  download?: boolean | DownloadOptions;
   /** Entry animation. Default true. */
   animate?: boolean;
   /** CSS color painted behind the chart. Default: transparent. */
   background?: string;
   onClick?: (hit: HitInfo) => void;
   onHover?: (hit: HitInfo | null) => void;
+}
+
+export interface DownloadOptions {
+  /** Which downloads the button offers. Default ['png', 'csv'] (CSV only when the chart's data is a table). */
+  formats?: ('png' | 'csv')[];
+  /** File name without extension. Default: the title, or the chart type. */
+  filename?: string;
 }
 
 export interface LegendOptions {
@@ -322,8 +331,12 @@ export interface Chart<O extends CommonOptions = CommonOptions> {
   resize(): void;
   /** Reset zoom / camera. */
   resetView(): void;
-  /** PNG data URL of the plot. */
+  /** PNG data URL of the whole chart as shown: plot, labels, legend and title. */
   toPNG(): string;
+  /** The chart's data as CSV, or null when it isn't a table (e.g. a mesh). */
+  toCSV(): string | null;
+  /** Save the chart as a PNG image or its data as a CSV file. */
+  download(format?: 'png' | 'csv', filename?: string): void;
   /** Show or hide a series (or slice, group…) by its legend name. Omit `visible` to flip it. */
   toggleSeries(name: string, visible?: boolean): void;
   /** Names currently hidden. */
