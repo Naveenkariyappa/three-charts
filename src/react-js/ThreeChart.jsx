@@ -1,0 +1,175 @@
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import { createChart } from '../core';
+
+/** Option values that change on every render (callbacks) must not trigger a rebuild. */
+function changed(prev, next) {
+  const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  for (const k of keys) {
+    if (typeof next[k] === 'function' || typeof prev[k] === 'function') continue;
+    if (prev[k] !== next[k]) return true;
+  }
+  return false;
+}
+
+/**
+ * Generic chart component: `<ThreeChart type="line" series={...} />`.
+ *
+ * Options are compared by reference, so memoize big arrays (useMemo) to avoid
+ * re-uploading data on unrelated re-renders.
+ */
+export const ThreeChart = forwardRef(function ThreeChart(props, ref) {
+  const { height = 320, className, style, ...options } = props;
+  const el = useRef(null);
+  const chart = useRef(null);
+  const latest = useRef(options);
+  const applied = useRef(options);
+  latest.current = options;
+
+  // Callbacks always reach the latest props without recreating the chart.
+  const withHandlers = (o) => ({
+    ...o,
+    onClick: (h) => latest.current.onClick?.(h),
+    onHover: (h) => latest.current.onHover?.(h),
+  });
+
+  useEffect(() => {
+    chart.current = createChart(el.current, withHandlers(latest.current));
+    applied.current = latest.current;
+    return () => {
+      chart.current?.destroy();
+      chart.current = null;
+    };
+    // Recreate only when the chart type changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options.type]);
+
+  useEffect(() => {
+    if (!chart.current) return;
+    if (changed(applied.current, options)) {
+      chart.current.update(withHandlers(options));
+      applied.current = options;
+    }
+  });
+
+  useImperativeHandle(ref, () => ({
+    update: (o) => chart.current?.update(o),
+    resetView: () => chart.current?.resetView(),
+    toPNG: () => chart.current?.toPNG() ?? '',
+  }));
+
+  return <div ref={el} className={className} style={{ height, position: 'relative', ...style }} />;
+});
+
+// ---- Per-chart components --------------------------------------------------------------
+
+function typed(type, name) {
+  const C = forwardRef((p, ref) => <ThreeChart ref={ref} {...p} type={type} />);
+  C.displayName = name;
+  return C;
+}
+
+export const LineChart = typed('line', 'LineChart');
+export const AreaChart = typed('area', 'AreaChart');
+export const BarChart = typed('bar', 'BarChart');
+export const HistogramChart = typed('histogram', 'HistogramChart');
+export const ScatterChart = typed('scatter', 'ScatterChart');
+export const BubbleChart = typed('bubble', 'BubbleChart');
+export const HeatmapChart = typed('heatmap', 'HeatmapChart');
+export const CandlestickChart = typed('candlestick', 'CandlestickChart');
+export const PieChart = typed('pie', 'PieChart');
+export const DonutChart = typed('donut', 'DonutChart');
+export const SemiDonutChart = typed('semiDonut', 'SemiDonutChart');
+export const RadarChart = typed('radar', 'RadarChart');
+export const GaugeChart = typed('gauge', 'GaugeChart');
+export const LollipopChart = typed('lollipop', 'LollipopChart');
+export const DotPlotChart = typed('dotplot', 'DotPlotChart');
+export const DumbbellChart = typed('dumbbell', 'DumbbellChart');
+export const RangeBarChart = typed('rangeBar', 'RangeBarChart');
+export const BulletChart = typed('bullet', 'BulletChart');
+export const WaterfallChart = typed('waterfall', 'WaterfallChart');
+export const MarimekkoChart = typed('marimekko', 'MarimekkoChart');
+export const PictographChart = typed('pictograph', 'PictographChart');
+export const RadialBarChart = typed('radialBar', 'RadialBarChart');
+export const RangeAreaChart = typed('rangeArea', 'RangeAreaChart');
+export const SlopeChart = typed('slope', 'SlopeChart');
+export const BumpChart = typed('bump', 'BumpChart');
+export const HorizonChart = typed('horizon', 'HorizonChart');
+export const SparklineChart = typed('sparkline', 'SparklineChart');
+export const BoxChart = typed('box', 'BoxChart');
+export const ViolinChart = typed('violin', 'ViolinChart');
+export const DensityChart = typed('density', 'DensityChart');
+export const RidgelineChart = typed('ridgeline', 'RidgelineChart');
+export const BeeswarmChart = typed('beeswarm', 'BeeswarmChart');
+export const StripChart = typed('strip', 'StripChart');
+export const ECDFChart = typed('ecdf', 'ECDFChart');
+export const QQChart = typed('qq', 'QQChart');
+export const TreemapChart = typed('treemap', 'TreemapChart');
+export const SunburstChart = typed('sunburst', 'SunburstChart');
+export const IcicleChart = typed('icicle', 'IcicleChart');
+export const PackChart = typed('pack', 'PackChart');
+export const DendrogramChart = typed('dendrogram', 'DendrogramChart');
+export const OrgChart = typed('orgChart', 'OrgChart');
+export const WaffleChart = typed('waffle', 'WaffleChart');
+export const FunnelChart = typed('funnel', 'FunnelChart');
+export const PyramidChart = typed('pyramid', 'PyramidChart');
+export const VennChart = typed('venn', 'VennChart');
+export const PolarAreaChart = typed('polarArea', 'PolarAreaChart');
+export const WindRoseChart = typed('windRose', 'WindRoseChart');
+export const RadialLineChart = typed('radialLine', 'RadialLineChart');
+export const HexbinChart = typed('hexbin', 'HexbinChart');
+export const ContourChart = typed('contour', 'ContourChart');
+export const Density2DChart = typed('density2d', 'Density2DChart');
+export const SplomChart = typed('splom', 'SplomChart');
+export const ConnectedScatterChart = typed('connectedScatter', 'ConnectedScatterChart');
+export const ParallelChart = typed('parallel', 'ParallelChart');
+export const ChordChart = typed('chord', 'ChordChart');
+export const ArcDiagramChart = typed('arcDiagram', 'ArcDiagramChart');
+export const AdjacencyChart = typed('adjacency', 'AdjacencyChart');
+export const NetworkChart = typed('network', 'NetworkChart');
+export const Network3DChart = typed('network3d', 'Network3DChart');
+export const SankeyChart = typed('sankey', 'SankeyChart');
+export const AlluvialChart = typed('alluvial', 'AlluvialChart');
+export const GanttChart = typed('gantt', 'GanttChart');
+export const TimelineChart = typed('timeline', 'TimelineChart');
+export const CalendarChart = typed('calendar', 'CalendarChart');
+export const LinearGaugeChart = typed('linearGauge', 'LinearGaugeChart');
+export const ProgressRingChart = typed('progressRing', 'ProgressRingChart');
+export const StatChart = typed('stat', 'StatChart');
+export const OHLCChart = typed('ohlc', 'OHLCChart');
+export const HeikinAshiChart = typed('heikinAshi', 'HeikinAshiChart');
+export const VolumeProfileChart = typed('volumeProfile', 'VolumeProfileChart');
+export const RenkoChart = typed('renko', 'RenkoChart');
+export const PointFigureChart = typed('pointFigure', 'PointFigureChart');
+export const KagiChart = typed('kagi', 'KagiChart');
+export const DepthChart = typed('depth', 'DepthChart');
+export const ChoroplethChart = typed('choropleth', 'ChoroplethChart');
+export const BubbleMapChart = typed('bubbleMap', 'BubbleMapChart');
+export const FlowMapChart = typed('flowMap', 'FlowMapChart');
+export const HexbinMapChart = typed('hexbinMap', 'HexbinMapChart');
+export const GlobeChart = typed('globe', 'GlobeChart');
+export const Bar3DChart = typed('bar3d', 'Bar3DChart');
+export const Scatter3DChart = typed('scatter3d', 'Scatter3DChart');
+export const Line3DChart = typed('line3d', 'Line3DChart');
+export const Surface3DChart = typed('surface3d', 'Surface3DChart');
+export const Mesh3DChart = typed('mesh3d', 'Mesh3DChart');
+export const IsosurfaceChart = typed('isosurface', 'IsosurfaceChart');
+export const VectorFieldChart = typed('vectorField', 'VectorFieldChart');
+export const VectorField3DChart = typed('vectorField3d', 'VectorField3DChart');
+export const SpectrogramChart = typed('spectrogram', 'SpectrogramChart');
+export const Waterfall3DChart = typed('waterfall3d', 'Waterfall3DChart');
+export const TernaryChart = typed('ternary', 'TernaryChart');
+export const SmithChart = typed('smith', 'SmithChart');
+export const WordCloudChart = typed('wordCloud', 'WordCloudChart');
+export const ParetoChart = typed('pareto', 'ParetoChart');
+export const PopulationPyramidChart = typed('populationPyramid', 'PopulationPyramidChart');
+export const ConfidenceBandChart = typed('confidenceBand', 'ConfidenceBandChart');
+export const ErrorBarChart = typed('errorBar', 'ErrorBarChart');
+export const MindMapChart = typed('mindMap', 'MindMapChart');
+export const VoronoiChart = typed('voronoi', 'VoronoiChart');
+export const PolarScatterChart = typed('polarScatter', 'PolarScatterChart');
+export const ConfusionMatrixChart = typed('confusionMatrix', 'ConfusionMatrixChart');
+export const RocCurveChart = typed('rocCurve', 'RocCurveChart');
+export const MacdChart = typed('macd', 'MacdChart');
+export const RsiChart = typed('rsi', 'RsiChart');
+export const CartogramChart = typed('cartogram', 'CartogramChart');
+export const DotDensityChart = typed('dotDensity', 'DotDensityChart');

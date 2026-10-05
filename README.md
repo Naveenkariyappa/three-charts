@@ -1,0 +1,147 @@
+# three-charts
+
+105 fast 2D and 3D chart types built on three.js (WebGL), handed out like [shadcn/ui](https://ui.shadcn.com): you don't install a charting library, you copy the chart's code into your project and own it. Works with React (TypeScript or JavaScript) and with plain TypeScript/JavaScript, with or without a build step. The only dependency is `three`.
+
+**Live demo and code:** SITE_URL
+
+---
+
+## Using the charts in your project
+
+### 1. Find your chart
+
+Open the site, browse **Demo** (every chart live, hover and zoom them), then click **View code** on the one you want. Pick your language at the top: **React · TS**, **React · JS**, **TypeScript** or **JavaScript**.
+
+### 2. Add it
+
+Every chart is one small file. Charts also share a few files (the engine, axes, tooltips); you add those once per project and every later chart reuses them. Choose one way:
+
+| You have | Do this |
+|---|---|
+| A React project set up with shadcn | `npx shadcn@latest add SITE_URL/r/bar-chart.json` (the chart page shows the exact command) |
+| Any React or bundler project (Vite, Next.js, webpack…) | `npm install three`, then click **Download (.zip)** on the chart page and unzip into `components/charts/` (React) or `src/charts/` |
+| Just one chart, simplest possible | TypeScript or React · TS tab → **One file**: a single self-contained file |
+| Plain HTML, no npm | **JavaScript** tab → download the zip, then use the HTML template under **Getting started** (loads three.js from a CDN) |
+
+The chart page also has **Copy install command**, which downloads the files with one terminal command.
+
+### 3. Use it
+
+React:
+
+```tsx
+import { BarChart } from '@/components/charts/bar-chart';
+
+export function Revenue() {
+  return (
+    <BarChart
+      height={320}
+      categories={['Q1', 'Q2', 'Q3', 'Q4']}
+      series={[{ name: 'Revenue', data: [42, 51, 48, 63] }]}
+    />
+  );
+}
+```
+
+JavaScript / TypeScript:
+
+```js
+import { createBarChart } from './charts/bar-chart.js';
+
+const chart = createBarChart(document.getElementById('chart'), {
+  categories: ['Q1', 'Q2', 'Q3', 'Q4'],
+  series: [{ name: 'Revenue', data: [42, 51, 48, 63] }],
+});
+
+chart.update({ series: [{ name: 'Revenue', data: [50, 55, 60, 70] }] }); // new data
+chart.destroy(); // when removing it
+```
+
+Every chart page has a complete example with realistic data for that chart.
+
+### Good to know
+
+- **Give the container a height.** The chart fills its box (`height` prop in React, CSS height otherwise).
+- **Big data:** pass typed arrays (`Float32Array`; `Float64Array` for timestamps). Lines and scatter plots handle a million points.
+- **React:** build data with `useMemo`. Options are compared by reference, so a new array on every render re-uploads the data.
+- **Live data:** call `ref.current.update({...})` (React) or `chart.update({...})` instead of re-rendering on every tick.
+- **Many charts on one page** are fine: they share one WebGL context.
+- **Next.js:** the React files start with `'use client'` and are safe to import on the server.
+- **Dark mode** follows `<html data-theme="dark">`, then the OS setting. Force it with `theme: 'light' | 'dark'`.
+- **Linked panels:** give charts the same `sync: 'name'` and they zoom and pan together (e.g. price + MACD + RSI).
+- **Interaction:** hover for tooltips, click legend items to hide series, drag to pan (2D) or orbit (3D), click a chart (or hold Ctrl/⌘) and scroll to zoom, double-click to reset.
+- **It's your code.** Change colors, labels or behavior in the files you copied; nothing will overwrite them.
+
+---
+
+## Chart types (105)
+
+Each type below has its own file and component (`bar` is `bar-chart.tsx` / `<BarChart>` / `createBarChart()`). Variants in parentheses are options on that chart.
+
+| Group | Types |
+|---|---|
+| Comparison | `bar` (grouped, `stacked`, `stacked: 'percent'`, `horizontal`), `lollipop`, `dotplot`, `dumbbell`, `rangeBar`, `bullet`, `waterfall`, `marimekko`, `pictograph`, `radialBar`, `radar`, `pareto`, `populationPyramid`, `wordCloud` |
+| Trend | `line` (`step`, `smooth`), `area` (`stacked`, `'percent'`, `'stream'`), `rangeArea`, `slope`, `bump`, `horizon`, `sparkline`, `radialLine`, `confidenceBand` |
+| Distribution | `histogram`, `box`, `violin`, `density`, `ridgeline`, `beeswarm`, `strip`, `ecdf`, `qq`, `errorBar` |
+| Part-to-whole | `pie`, `donut`, `semiDonut`, `waffle`, `funnel`, `pyramid`, `venn`, `polarArea`, `windRose` |
+| Hierarchy | `treemap`, `sunburst`, `icicle`, `pack`, `dendrogram`, `orgChart`, `mindMap` |
+| Relationship | `scatter`, `bubble`, `heatmap`, `hexbin`, `density2d`, `splom`, `connectedScatter`, `parallel`, `voronoi`, `polarScatter` |
+| Network | `chord`, `arcDiagram`, `adjacency`, `network`, `network3d` |
+| Flow & time | `sankey`, `alluvial`, `gantt`, `timeline`, `calendar` |
+| KPI | `gauge`, `linearGauge` (`variant: 'thermometer'`), `progressRing`, `stat` |
+| Machine learning | `confusionMatrix` (counts, or `normalize: 'row' \| 'column'`), `rocCurve` (`kind: 'roc' \| 'pr'`, AUC / average precision computed from labels and scores) |
+| Financial | `candlestick` (`indicators`: SMA, EMA, Bollinger), `ohlc`, `heikinAshi`, `volumeProfile`, `renko`, `pointFigure`, `kagi`, `depth`, `macd`, `rsi` |
+| Geo | `choropleth`, `bubbleMap`, `flowMap`, `hexbinMap`, `cartogram`, `dotDensity`, `globe` (pass any TopoJSON, e.g. `world-atlas`) |
+| 3D & scientific | `bar3d`, `scatter3d`, `line3d`, `surface3d`, `mesh3d`, `isosurface`, `vectorField`, `vectorField3d`, `contour`, `spectrogram`, `waterfall3d`, `ternary`, `smith` |
+
+Not built on purpose: 3D pie (perspective distorts slice sizes).
+
+Any 2D axis chart takes `sync: 'name'`: charts with the same name zoom and pan their x axis together (price + MACD + RSI).
+
+---
+
+## Developing this repo
+
+```bash
+npm install
+npm run dev        # demo at http://localhost:5173 (regenerates the copy-paste files on change)
+npm run registry   # regenerate the copy-paste files on their own
+npm run build      # type-check source and generated files, build the site into dist/
+```
+
+- `src/core/`: the charts (single source of truth).
+- `src/react/chart-react.tsx`: the React wrapper every React chart file uses.
+- `src/demo/`: the demo site (gallery, Code page, catalog). Examples live in `examples.ts` and `examples2.ts`; each one is source text that the gallery runs and the Code page prints.
+- `scripts/registry.mjs`: turns `src/core` into the copy-paste files.
+- `public/vanilla.html`: plain HTML page that uses the copied JavaScript files.
+
+The site deploys to Vercel as a static Vite build (`vercel.json`). `npm run build` generates the copy-paste files, so they are not committed.
+
+### How the copy-paste files are made
+
+`scripts/registry.mjs` reads `src/core` (and `src/react/chart-react.tsx`), splits it by declaration and writes `public/registry` (TS, JS, React TS and React JS modular files, plus single-file builds for TS and React TS) and `public/r` (shadcn registry items):
+
+- Code only one chart uses (its class, options type, helpers) goes into that chart's file.
+- Code two or more charts share goes into the shared files, grouped so a chart pulls in only what it needs. Small helpers that would drag a big shared file into a chart are moved into `chart-core` instead.
+- JavaScript versions are the same code with types removed, formatted with Prettier (cached in `node_modules/.cache`, so re-runs take about a second).
+
+`npm run dev` regenerates the files when chart source changes, and `npm run build` type-checks every generated file in strict mode. So `src/core` is the single source: the demo and the copy-paste files can't drift apart.
+
+## How it stays fast
+
+- **One WebGL context for every chart.** A single hidden renderer draws each chart and copies the pixels into that chart's own canvas. Browsers allow roughly 16 contexts, so a canvas-per-chart library breaks on big dashboards. This one doesn't.
+- **Render on demand.** A chart redraws only when its data, size, hover or camera changes, and only while it is on screen.
+- **One draw call per series.** Bars and candles are instanced, points use one `Points` mesh, and lines use `Line2`. A heatmap is a single float texture.
+- **Zoom and pan move the camera.** Data is never re-uploaded, so 1M-point charts stay at 60 fps.
+- **Fast hover.** Scatter uses a spatial grid index, lines use binary search, and 3D picking scans typed arrays directly.
+- **Typed arrays in, no copies.** Pass `Float32Array` for values and `Float64Array` for epoch-ms time.
+- **Off-screen charts give memory back.** A chart scrolled away frees its canvas and GPU buffers and re-uploads them when it returns, so pages with dozens of charts stay within GPU memory.
+- **GPU contours.** Contour bands and isolines are computed per pixel in a shader, so they stay sharp at any zoom.
+
+## Interaction
+
+- Hover any mark for a tooltip.
+- Click legend items to toggle series.
+- Drag to pan (2D) or orbit (3D).
+- Click into a chart, or hold Ctrl/⌘, to zoom with the wheel. Plain scrolling still scrolls the page.
+- Double-click resets the zoom.

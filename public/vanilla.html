@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>three-charts · plain HTML</title>
+    <!-- three.js from a CDN: no npm, no bundler. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+          "three/examples/jsm/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+        }
+      }
+    </script>
+    <style>
+      body { margin: 0; padding: 24px; font: 14px/1.5 system-ui, sans-serif; background: #f9f9f7; color: #0b0b0b; }
+      @media (prefers-color-scheme: dark) { body { background: #0d0d0d; color: #fff; } }
+      a { color: #2a78d6; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+      .box { height: 300px; }
+    </style>
+  </head>
+  <body>
+    <p><a href="./">← React demo</a></p>
+    <h1>Plain HTML: copied files, no build step</h1>
+    <p>
+      This page loads the JavaScript files from the Code page (<code>registry/js/</code>) straight into the browser.
+      View source: each chart is one import and one call.
+    </p>
+    <div class="grid">
+      <div class="box" id="a"></div>
+      <div class="box" id="b"></div>
+      <div class="box" id="c"></div>
+      <div class="box" id="d"></div>
+    </div>
+    <p><button id="shuffle">Shuffle bar data (chart.update)</button></p>
+
+    <script type="module">
+      import { createBarChart } from './registry/js/bar-chart.js';
+      import { createLineChart } from './registry/js/line-chart.js';
+      import { createDonutChart } from './registry/js/donut-chart.js';
+      import { createSurface3DChart } from './registry/js/surface3d-chart.js';
+
+      const bar = createBarChart(document.getElementById('a'), {
+        title: 'Revenue by quarter',
+        categories: ['Q1', 'Q2', 'Q3', 'Q4'],
+        series: [
+          { name: '2025', data: [47, 58, 55, 71] },
+          { name: '2026', data: [52, 61, 66, 80] },
+        ],
+      });
+
+      const y = new Float32Array(200_000);
+      for (let i = 0, v = 0; i < y.length; i++) y[i] = v += Math.random() - 0.5;
+      createLineChart(document.getElementById('b'), { title: '200k-point random walk', series: [{ name: 'Walk', y }] });
+
+      createDonutChart(document.getElementById('c'), {
+        title: 'Storage',
+        data: [
+          { label: 'Photos', value: 180 },
+          { label: 'Apps', value: 120 },
+          { label: 'Free', value: 110 },
+        ],
+      });
+
+      const n = 60, data = new Float32Array(n * n);
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) data[r * n + c] = Math.sin(r / 8) * Math.cos(c / 8);
+      createSurface3DChart(document.getElementById('d'), { title: 'Surface', rows: n, cols: n, data, autoRotate: true });
+
+      document.getElementById('shuffle').onclick = () =>
+        bar.update({
+          series: ['2025', '2026'].map((name) => ({ name, data: [0, 0, 0, 0].map(() => 30 + Math.random() * 60) })),
+        });
+    </script>
+  </body>
+</html>
