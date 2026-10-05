@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CatalogPage } from './CatalogPage';
 import { CodePage } from './CodePage';
+import { DocsPage } from './DocsPage';
 import { Gallery } from './Gallery';
 
 function useHash() {
@@ -46,7 +47,7 @@ export function App() {
   const focus = new URLSearchParams(query).get('focus') ?? undefined;
 
   useEffect(() => {
-    if (page === 'code') window.scrollTo(0, 0);
+    if (page === 'code' || page === 'docs') window.scrollTo(0, 0);
   }, [page, parts[1]]);
 
   const link = (href: string, label: string, active: boolean) => (
@@ -63,6 +64,7 @@ export function App() {
         </a>
         <nav>
           {link('#/', 'Demo', page === '')}
+          {link('#/docs', 'Docs', page === 'docs')}
           {link('#/code', 'Code', page === 'code')}
           {link('#/catalog', 'Catalog', page === 'catalog')}
           <a href="vanilla.html">Vanilla page</a>
@@ -75,6 +77,7 @@ export function App() {
         {page === '' && <Gallery focus={focus} />}
         {page === 'code' && <CodePage id={parts[1]} />}
         {page === 'catalog' && <CatalogPage />}
+        {page === 'docs' && <DocsPage />}
       </div>
     </>
   );

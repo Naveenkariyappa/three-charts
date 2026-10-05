@@ -1,0 +1,143 @@
+import { CodeBlock } from './CodePage';
+
+/** The user guide: how to take a chart from this site into your own project. Mirrors the README. */
+export function DocsPage() {
+  const site = new URL(import.meta.env.BASE_URL, location.href).href.replace(/\/$/, '');
+  return (
+    <article className="docs">
+      <h1>Using the charts in your project</h1>
+      <p className="blurb">
+        You don't install a charting library. Like <a href="https://ui.shadcn.com">shadcn/ui</a>, you copy a chart's code into your project and own it. It works with
+        React (TypeScript or JavaScript) and with plain TypeScript/JavaScript, with or without a build step. The only dependency is <code>three</code>.
+      </p>
+
+      <h2>1. Find your chart</h2>
+      <p>
+        Browse the <a href="#/">Demo</a> (every chart is live: hover it, zoom it), then click <b>View code</b> on the one you want. Pick your language at the top:{' '}
+        <b>React · TS</b>, <b>React · JS</b>, <b>TypeScript</b> or <b>JavaScript</b>.
+      </p>
+
+      <h2>2. Add it</h2>
+      <p>
+        Every chart is one small file. Charts also share a few files (the engine, axes, tooltips). You add those once per project and every later chart reuses them.
+        Choose one way:
+      </p>
+      <div className="table-wrap">
+        <table className="pack-table">
+          <thead>
+            <tr>
+              <th>You have</th>
+              <th>Do this</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>A React project set up with shadcn</td>
+              <td>
+                Run the command on the chart's page, e.g. <code>npx shadcn@latest add {site}/r/bar-chart.json</code>
+              </td>
+            </tr>
+            <tr>
+              <td>Any React or bundler project (Vite, Next.js, webpack…)</td>
+              <td>
+                <code>npm install three</code>, then click <b>Download (.zip)</b> on the chart's page and unzip into <code>components/charts/</code> (React) or{' '}
+                <code>src/charts/</code>
+              </td>
+            </tr>
+            <tr>
+              <td>Just one chart, simplest possible</td>
+              <td>
+                <b>TypeScript</b> or <b>React · TS</b> tab → <b>One file</b>: a single self-contained file
+              </td>
+            </tr>
+            <tr>
+              <td>Plain HTML, no npm</td>
+              <td>
+                <b>JavaScript</b> tab → download the zip, then use the HTML template in <a href="#/code/setup">Getting started</a> (loads three.js from a CDN).{' '}
+                <a href="vanilla.html">Working example</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="meta">
+        Each chart page also has <b>Copy install command</b>, which fetches the files with one terminal command.
+      </p>
+
+      <h2>3. Use it</h2>
+      <h3>React</h3>
+      <CodeBlock
+        file="Revenue.tsx"
+        code={`import { BarChart } from '@/components/charts/bar-chart';
+
+export function Revenue() {
+  return (
+    <BarChart
+      height={320}
+      categories={['Q1', 'Q2', 'Q3', 'Q4']}
+      series={[{ name: 'Revenue', data: [42, 51, 48, 63] }]}
+    />
+  );
+}
+`}
+      />
+      <h3>JavaScript / TypeScript</h3>
+      <CodeBlock
+        file="main.js"
+        code={`import { createBarChart } from './charts/bar-chart.js';
+
+const chart = createBarChart(document.getElementById('chart'), {
+  categories: ['Q1', 'Q2', 'Q3', 'Q4'],
+  series: [{ name: 'Revenue', data: [42, 51, 48, 63] }],
+});
+
+chart.update({ series: [{ name: 'Revenue', data: [50, 55, 60, 70] }] }); // new data
+chart.destroy(); // when removing it
+`}
+      />
+      <p className="meta">Every chart page has a complete example with realistic data for that chart.</p>
+
+      <h2>Good to know</h2>
+      <ul className="notes">
+        <li>
+          <b>Give the container a height.</b> The chart fills its box (<code>height</code> prop in React, CSS height otherwise).
+        </li>
+        <li>
+          <b>Big data:</b> pass typed arrays (<code>Float32Array</code>; <code>Float64Array</code> for timestamps). Lines and scatter plots handle a million points.
+        </li>
+        <li>
+          <b>React:</b> build data with <code>useMemo</code>. Options are compared by reference, so a new array on every render re-uploads the data.
+        </li>
+        <li>
+          <b>Live data:</b> call <code>ref.current.update(&#123;…&#125;)</code> (React) or <code>chart.update(&#123;…&#125;)</code> instead of re-rendering on every
+          tick. See <a href="#/code/live">Live streaming line</a>.
+        </li>
+        <li>
+          <b>Many charts on one page</b> are fine: they share one WebGL context.
+        </li>
+        <li>
+          <b>Next.js:</b> the React files start with <code>'use client'</code> and are safe to import on the server.
+        </li>
+        <li>
+          <b>Dark mode</b> follows <code>&lt;html data-theme="dark"&gt;</code>, then the OS setting. Force it with <code>theme: 'light' | 'dark'</code>.
+        </li>
+        <li>
+          <b>Linked panels:</b> give charts the same <code>sync: 'name'</code> and they zoom and pan together (e.g. price + MACD + RSI).
+        </li>
+        <li>
+          <b>Interaction:</b> hover for tooltips, click legend items to hide series, drag to pan (2D) or orbit (3D), click a chart (or hold Ctrl/⌘) and scroll to zoom,
+          double-click to reset.
+        </li>
+        <li>
+          <b>It's your code.</b> Change colors, labels or behavior in the files you copied; nothing will overwrite them.
+        </li>
+      </ul>
+
+      <h2>What's available</h2>
+      <p>
+        105 chart types across comparison, trend, distribution, part-to-whole, hierarchy, relationship, network, flow, KPI, machine learning, financial, geo and 3D. See
+        them in the <a href="#/">Demo</a>, or the <a href="#/catalog">Catalog</a> for how they map to chart types found in other libraries.
+      </p>
+    </article>
+  );
+}

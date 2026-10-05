@@ -93,7 +93,7 @@ function download(name: string, text: string) {
 
 const PREVIEW_LINES = 24;
 
-function CodeBlock({ code, file, collapsible = false, downloadable = false }: { code: string; file?: string; collapsible?: boolean; downloadable?: boolean }) {
+export function CodeBlock({ code, file, collapsible = false, downloadable = false }: { code: string; file?: string; collapsible?: boolean; downloadable?: boolean }) {
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
   const lines = code.split('\n').length;
