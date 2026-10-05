@@ -2,7 +2,7 @@
 
 105 fast 2D and 3D chart types built on three.js (WebGL), handed out like [shadcn/ui](https://ui.shadcn.com): you don't install a charting library, you copy the chart's code into your project and own it. Works with React (TypeScript or JavaScript) and with plain TypeScript/JavaScript, with or without a build step. The only dependency is `three`.
 
-**Live demo and code:** SITE_URL
+**Live demo, docs and code:** https://three-charts.vercel.app (docs: https://three-charts.vercel.app/#/docs)
 
 ---
 
@@ -18,7 +18,7 @@ Every chart is one small file. Charts also share a few files (the engine, axes, 
 
 | You have | Do this |
 |---|---|
-| A React project set up with shadcn | `npx shadcn@latest add SITE_URL/r/bar-chart.json` (the chart page shows the exact command) |
+| A React project set up with shadcn | `npx shadcn@latest add https://three-charts.vercel.app/r/bar-chart.json` (the chart page shows the exact command) |
 | Any React or bundler project (Vite, Next.js, webpack…) | `npm install three`, then click **Download (.zip)** on the chart page and unzip into `components/charts/` (React) or `src/charts/` |
 | Just one chart, simplest possible | TypeScript or React · TS tab → **One file**: a single self-contained file |
 | Plain HTML, no npm | **JavaScript** tab → download the zip, then use the HTML template under **Getting started** (loads three.js from a CDN) |
