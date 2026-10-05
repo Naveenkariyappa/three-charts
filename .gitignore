@@ -10,3 +10,5 @@ public/r.tmp-*
 public/r *
 public/registry *
 .claude/
+public/html
+public/vanilla.html

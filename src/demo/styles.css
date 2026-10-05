@@ -695,10 +695,14 @@ tr:last-child td {
   inset: 0;
   border-radius: 5px;
   box-shadow: inset 0 0 0 1px var(--border);
+  pointer-events: none;
 }
+/* The (invisible) color input sits on top of its swatch so the click opens the picker itself:
+   relying on the label to forward the click doesn't open color pickers in every browser. */
 .swatch input {
   position: absolute;
   inset: 0;
+  z-index: 1;
   opacity: 0;
   width: 100%;
   height: 100%;

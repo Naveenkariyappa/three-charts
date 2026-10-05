@@ -1,8 +1,13 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { buildRegistry } from './scripts/registry.mjs';
 
-/** Regenerates the copy-paste files (public/registry, public/r) when chart source changes. */
+/** The plain-HTML pages (public/html, public/vanilla.html), built from the examples. */
+const buildHtmlPages = () => promisify(execFile)(process.execPath, ['scripts/html-pages.mjs']);
+
+/** Regenerates the copy-paste files (public/registry, public/r) and plain-HTML pages when chart source or examples change. */
 function chartRegistry(): Plugin {
   let timer: ReturnType<typeof setTimeout> | undefined;
   return {
@@ -10,13 +15,16 @@ function chartRegistry(): Plugin {
     apply: 'serve', // `npm run build` runs the generator itself
     async buildStart() {
       await buildRegistry();
+      await buildHtmlPages();
     },
     configureServer(server) {
       server.watcher.on('change', (file) => {
-        if (!/src[\\/]core[\\/]|src[\\/]demo[\\/]examples\.ts$/.test(file)) return;
+        if (!/src[\\/]core[\\/]|src[\\/]demo[\\/]examples2?\.ts$/.test(file)) return;
         clearTimeout(timer);
         timer = setTimeout(() => {
-          buildRegistry({ quiet: true }).catch((e) => server.config.logger.error(`chart-registry: ${e.message}`));
+          buildRegistry({ quiet: true })
+            .then(buildHtmlPages)
+            .catch((e) => server.config.logger.error(`chart-registry: ${e.message}`));
         }, 300);
       });
     },
