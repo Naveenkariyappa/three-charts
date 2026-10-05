@@ -84,6 +84,37 @@ export function DocsPage() {
       )}
       <p className="meta">Every chart page has a complete example with realistic data for that chart.</p>
 
+      <h2>4. Customize it</h2>
+      <p>
+        Every chart takes the same color, text and legend options. The quickest way to get them right is the <b>Customize</b> panel on each chart's page in{' '}
+        <a href="#/code">Code</a>: change colors, the legend and fonts on a live chart, and the usage code updates to match.
+      </p>
+      <CodeBlock file="options" code={CUSTOMIZE_CODE} />
+      <div className="table-wrap">
+        <table className="pack-table">
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>What it changes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CUSTOMIZE_ROWS.map(([k, v]) => (
+              <tr key={k}>
+                <td>
+                  <code>{k}</code>
+                </td>
+                <td>{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="meta">
+        A series' own <code>color</code> (or a slice's, a node's…) wins over <code>colors</code>. Text and legend always use the text colors, never the series color,
+        so they stay readable.
+      </p>
+
       <h2>Good to know</h2>
       <ul className="notes">
         <li>
@@ -112,8 +143,9 @@ export function DocsPage() {
           <b>Linked panels:</b> give charts the same <code>sync: 'name'</code> and they zoom and pan together (e.g. price + MACD + RSI).
         </li>
         <li>
-          <b>Interaction:</b> hover for tooltips, click legend items to hide series, drag to pan (2D) or orbit (3D), click a chart (or hold Ctrl/⌘) and scroll to zoom,
-          double-click to reset.
+          <b>Interaction:</b> hover for tooltips, click a legend item to hide its series (double-click to show only that one), drag to pan (2D) or orbit (3D), click a
+          chart (or hold Ctrl/⌘) and scroll to zoom, double-click to reset. React to it with <code>onHover</code>, <code>onClick</code> and{' '}
+          <code>legend.onToggle</code>; drive it with <code>toggleSeries(name)</code>.
         </li>
         <li>
           <b>It's your code.</b> Change colors, labels or behavior in the files you copied; nothing will overwrite them.
@@ -129,3 +161,51 @@ export function DocsPage() {
     </article>
   );
 }
+
+const CUSTOMIZE_CODE = `{
+  // Colors
+  colors: ['#0f766e', '#ea580c', '#4f46e5'],      // series, in order
+  colorScale: ['#e0f2fe', '#0369a1', '#0c4a6e'],  // heatmaps, maps, surfaces (low → high)
+  divergingColors: ['#b91c1c', '#f5f5f4', '#1d4ed8'],
+  positiveColor: '#16a34a',                       // up candles, increases, gains
+  negativeColor: '#dc2626',
+  background: '#ffffff',
+  theme: 'light',                                 // or 'dark'; default follows the page
+
+  // Text
+  title: 'Revenue by region',
+  appearance: {
+    fontFamily: 'Inter, system-ui, sans-serif',
+    fontSize: 12,                                 // labels; titleSize for the title
+    textColor: '#111827',
+    mutedTextColor: '#6b7280',                    // axis ticks
+    gridColor: '#e5e7eb',
+    tooltipBackground: '#ffffff',
+  },
+
+  // Legend
+  legend: {
+    position: 'right',                            // 'top' | 'bottom' | 'left' | 'right'
+    align: 'start',                               // 'start' | 'center' | 'end'
+    marker: 'circle',                             // 'square' | 'circle' | 'line'
+    hidden: ['2023'],                             // start with these series hidden
+    format: (name) => name.toUpperCase(),
+    onToggle: (name, visible) => console.log(name, visible),
+  },
+
+  // Interaction
+  tooltip: true,
+  onHover: (hit) => {},                           // hit: { series, index, values } or null
+  onClick: (hit) => {},
+}`;
+
+const CUSTOMIZE_ROWS: [string, string][] = [
+  ['colors', 'Series colors in order. The default is eight hues checked for color blindness.'],
+  ['colorScale', 'Low → high scale for heatmaps, maps, contours, densities and 3D surfaces.'],
+  ['divergingColors', 'Negative → neutral → positive scale (diverging heatmaps, correlation, Likert).'],
+  ['positiveColor / negativeColor', 'Up and down: candles, waterfall, baseline, win/loss, depth.'],
+  ['appearance', 'fontFamily, fontSize, titleSize, textColor, secondaryTextColor, mutedTextColor, gridColor, axisColor, tooltipBackground, borderColor.'],
+  ['legend', 'false hides it, true always shows it, or an object: show, position, align, marker, toggle, hidden, format, onToggle.'],
+  ['theme / background', "Force 'light' or 'dark'; paint a background color (default transparent)."],
+  ['tooltip / animate / grid', 'Turn the tooltip, the entry animation or (charts with axes) the grid off.'],
+];

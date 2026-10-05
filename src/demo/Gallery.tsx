@@ -54,13 +54,16 @@ function Card({ ex }: { ex: Example }) {
     <article className="card" id={`ex-${ex.id}`}>
       <header>
         <h3>{ex.title}</h3>
-        <span className="badge">{ex.dim}</span>
-        {ex.scale && <span className="badge accent">{ex.scale}</span>}
       </header>
       <p className="blurb">{ex.blurb}</p>
       <LazyChart ex={ex} />
       <footer>
-        <a href={`#/code/${ex.id}`}>View code →</a>
+        <span className="spec">
+          <span>{ex.type}</span>
+          <span>{ex.dim}</span>
+          {ex.scale && <span>{ex.scale}</span>}
+        </span>
+        <a href={`#/code/${ex.id}`}>Customize &amp; code →</a>
       </footer>
     </article>
   );
@@ -88,17 +91,37 @@ export function Gallery({ focus }: { focus?: string }) {
     (group === 'all' || e.group === group) && (dim === 'all' || (dim === 'large' ? !!e.scale : e.dim === dim));
   const list = EXAMPLES.filter(match);
   const groups = GROUPS.filter((g) => list.some((e) => e.group === g));
-  const showLive = (group === 'all' || group === 'Trend') && (dim === 'all' || dim === '2D');
+  // On the unfiltered page the stream is the hero; it joins the grid only when Trend is picked.
+  const showLive = group === 'Trend' && (dim === 'all' || dim === '2D');
   const count = EXAMPLES.length + 1;
   const types = new Set(EXAMPLES.map((e) => e.type)).size;
 
   return (
     <>
-      <section className="intro">
-        <h1>Charts on one shared WebGL renderer</h1>
+      <section className="hero">
+        <div>
+          <h1>
+            Charts you copy in. <em>Not a library you install.</em>
+          </h1>
+          <p>
+            {types} chart types on one shared WebGL renderer, from bar charts to million-point scatter plots, streaming telemetry and 3D surfaces. Pick one, copy
+            its file, and the code is yours. React or plain TypeScript; three.js is the only dependency.
+          </p>
+          <div className="row">
+            <a className="btn primary" href="#/?focus=charts" onClick={(e) => (e.preventDefault(), document.getElementById('charts')?.scrollIntoView({ behavior: 'smooth' }))}>
+              Browse {count} examples
+            </a>
+            <a className="btn" href="#/docs">
+              How to use them
+            </a>
+          </div>
+        </div>
+        <LiveChart bench height={260} />
+      </section>
+      <section className="intro" id="charts">
         <p>
-          {count} live examples of {types} chart types, 2D and 3D, several with a million data points. Hover for values, click legend
-          items to toggle series, drag to pan or orbit, and click a chart (or hold Ctrl/⌘) to zoom with the wheel.
+          Hover for values. Click a legend item to hide its series, double-click to show only that one. Drag to pan or orbit; click a chart (or hold Ctrl/⌘) and
+          scroll to zoom. Every chart's page has a Customize panel for colors, legend and fonts.
         </p>
         <div className="filters" role="group" aria-label="Filter by category">
           {['all', ...GROUPS].map((g) => (

@@ -19,9 +19,18 @@ export interface Theme {
   /** Diverging: cool pole -> neutral -> warm pole. */
   diverging: string[];
   status: { good: string; warning: string; serious: string; critical: string };
+  /** Gains, up candles, increases. */
+  positive: string;
+  /** Losses, down candles, decreases. */
+  negative: string;
+  /** CSS font-family for every label. */
+  font: string;
+  /** Base label size in CSS px (axis ticks, data labels). */
+  fontSize: number;
 }
 
 const SEQ_BLUE = ['#cde2fb', '#b7d3f6', '#9ec5f4', '#86b6ef', '#6da7ec', '#5598e7', '#3987e5', '#2a78d6', '#256abf', '#1c5cab', '#184f95', '#104281', '#0d366b'];
+const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 const STATUS = { good: '#0ca30c', warning: '#fab219', serious: '#ec835a', critical: '#d03b3b' };
 
 export const LIGHT: Theme = {
@@ -38,6 +47,10 @@ export const LIGHT: Theme = {
   sequential: SEQ_BLUE,
   diverging: ['#104281', '#3987e5', '#9ec5f4', '#f0efec', '#f3a9a8', '#e34948', '#a52a2a'],
   status: STATUS,
+  positive: '#1baf7a',
+  negative: '#e34948',
+  font: FONT,
+  fontSize: 11,
 };
 
 export const DARK: Theme = {
@@ -55,6 +68,10 @@ export const DARK: Theme = {
   sequential: [...SEQ_BLUE].reverse(),
   diverging: ['#cde2fb', '#5598e7', '#1c5cab', '#383835', '#a63a39', '#e66767', '#f6c4c3'],
   status: STATUS,
+  positive: '#199e70',
+  negative: '#e66767',
+  font: FONT,
+  fontSize: 11,
 };
 
 export function resolveTheme(mode: ThemeMode = 'auto'): Theme {
@@ -64,6 +81,60 @@ export function resolveTheme(mode: ThemeMode = 'auto'): Theme {
   if (attr === 'dark') return DARK;
   if (attr === 'light') return LIGHT;
   return matchMedia('(prefers-color-scheme: dark)').matches ? DARK : LIGHT;
+}
+
+/** The color and font options every chart accepts (see `CommonOptions`). */
+export interface ThemeOverrides {
+  colors?: string[];
+  colorScale?: string[];
+  divergingColors?: string[];
+  positiveColor?: string;
+  negativeColor?: string;
+  appearance?: Appearance;
+}
+
+/** Text, grid and font overrides. Any field left out keeps the theme's value. */
+export interface Appearance {
+  /** CSS font-family for titles, labels, legend and tooltip. */
+  fontFamily?: string;
+  /** Label size in CSS px. Default 11. */
+  fontSize?: number;
+  /** Title size in CSS px. Default 13. */
+  titleSize?: number;
+  /** Titles, values and tooltip text. */
+  textColor?: string;
+  /** Legend text and secondary labels. */
+  secondaryTextColor?: string;
+  /** Axis ticks and quiet labels. */
+  mutedTextColor?: string;
+  gridColor?: string;
+  axisColor?: string;
+  tooltipBackground?: string;
+  borderColor?: string;
+}
+
+/** The theme for `mode`, with the chart's own color and font options applied on top. */
+export function customTheme(mode: ThemeMode | undefined, o: ThemeOverrides): Theme {
+  const t = resolveTheme(mode);
+  const s = o.appearance ?? {};
+  const list = (a?: string[]) => (a && a.length > 1 ? a : undefined);
+  return {
+    ...t,
+    series: o.colors && o.colors.length ? o.colors : t.series,
+    sequential: list(o.colorScale) ?? t.sequential,
+    diverging: list(o.divergingColors) ?? t.diverging,
+    positive: o.positiveColor ?? t.positive,
+    negative: o.negativeColor ?? t.negative,
+    font: s.fontFamily ?? t.font,
+    fontSize: s.fontSize ?? t.fontSize,
+    textPrimary: s.textColor ?? t.textPrimary,
+    textSecondary: s.secondaryTextColor ?? t.textSecondary,
+    textMuted: s.mutedTextColor ?? t.textMuted,
+    grid: s.gridColor ?? t.grid,
+    axis: s.axisColor ?? t.axis,
+    tooltipBg: s.tooltipBackground ?? t.tooltipBg,
+    border: s.borderColor ?? t.border,
+  };
 }
 
 /** Slot i of the categorical palette. Past the last slot, series fold to muted gray rather than invent hues. */

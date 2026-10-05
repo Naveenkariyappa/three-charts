@@ -57,8 +57,8 @@ export class BaselineChart extends MarkChart<BaselineOptions> {
 
   protected legendItems(): LegendItem[] {
     return [
-      { name: 'Above', color: this.theme.series[2] },
-      { name: 'Below', color: this.theme.series[7] },
+      { name: 'Above', color: this.theme.positive },
+      { name: 'Below', color: this.theme.negative },
     ];
   }
 
@@ -73,8 +73,8 @@ export class BaselineChart extends MarkChart<BaselineOptions> {
 
   protected marks(b: MarkBuilder) {
     const base = this.base();
-    const up = this.theme.series[2];
-    const down = this.theme.series[7];
+    const up = this.theme.positive;
+    const down = this.theme.negative;
     const pts = withCrossings(this.opts.x, this.opts.y, () => base);
     for (const run of runs(pts)) {
       if (this.hidden.has(run.above ? 'Above' : 'Below')) continue;
@@ -93,7 +93,7 @@ export class BaselineChart extends MarkChart<BaselineOptions> {
     const dx = this.toData(px, py)[0];
     const i = x ? nearestIndex(x, dx) : Math.max(0, Math.min(y.length - 1, Math.round(dx)));
     const base = this.base();
-    const color = y[i] >= base ? this.theme.series[2] : this.theme.series[7];
+    const color = y[i] >= base ? this.theme.positive : this.theme.negative;
     const [hx, hy] = this.toPx(xAt(x, i), y[i]);
     this.hover = { px: hx, py: hy, color };
     const d = y[i] - base;

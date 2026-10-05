@@ -44,6 +44,13 @@ function optionsChanged(prev: Record<string, unknown>, next: Record<string, unkn
   return false;
 }
 
+/** `next`, plus `undefined` for props that were removed, so the chart drops them instead of keeping the old value. */
+function withRemoved<T>(prev: T, next: T): T {
+  const out = { ...next } as Record<string, unknown>;
+  for (const k of Object.keys(prev as object)) if (!(k in out)) out[k] = undefined;
+  return out as T;
+}
+
 /**
  * Wrap a chart class as a React component. Options are compared by reference,
  * so build big arrays once (useMemo) to avoid re-uploading data on unrelated renders.
@@ -83,7 +90,7 @@ export function chartComponent<O extends CommonOptions & { type: string }, C ext
 
     useEffect(() => {
       if (chart.current && optionsChanged(applied.current as Record<string, unknown>, options as Record<string, unknown>)) {
-        chart.current.update(resolved(options));
+        chart.current.update(resolved(withRemoved(applied.current, options)));
         applied.current = options;
       }
     });

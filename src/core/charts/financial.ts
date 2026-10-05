@@ -5,8 +5,8 @@ import { ema } from '../stats';
 import type { Numbers } from '../types';
 import type { DepthOptions, HLCOptions, HollowCandleOptions, KagiOptions, LineBreakOptions, MacdOptions, PointFigureOptions, RenkoOptions, RsiOptions } from '../types2';
 
-function upDown(chart: { theme: { series: string[] } }) {
-  return { up: chart.theme.series[2], down: chart.theme.series[7] };
+function upDown(chart: { theme: { positive: string; negative: string } }) {
+  return { up: chart.theme.positive, down: chart.theme.negative };
 }
 
 function niceStep(v: number) {
@@ -170,6 +170,7 @@ export class PointFigureChart extends MarkChart<PointFigureOptions> {
 
 export class KagiChart extends MarkChart<KagiOptions> {
   readonly type = 'kagi' as const;
+  protected legendToggles = false;
   protected showXTicks = false;
   private turns: number[] = [];
   private turnAt: number[] = [];
@@ -312,6 +313,7 @@ export class DepthChart extends MarkChart<DepthOptions> {
     const [x] = this.toData(px, py);
     this.hoverPx = px;
     const bidSide = this.bid.length && x <= this.bid[0].price;
+    if (this.hidden.has(bidSide ? 'Bids' : 'Asks')) return null;
     const list: { price: number; cum: number }[] = bidSide ? this.bid : this.ask;
     // Cumulative depth available at this price or better.
     let cum = 0;

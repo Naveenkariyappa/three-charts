@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { COMPONENT, EXAMPLES, chartFile, jsSnippet, jsxSnippet, tsSnippet, tsxSnippet, type Example } from './examples';
 import { GROUPS } from './examples2';
 import { LIVE_SNIPPETS } from './LiveChart';
+import { Customizer } from './Customizer';
+import { DEFAULT_CUSTOM, customOptions, mergeProps, type Custom } from './customize';
 import { zip } from './zip';
 
 /**
@@ -289,7 +291,19 @@ function snippetFor(ex: Example, flavour: Flavour) {
   return { 'react-ts': tsxSnippet, 'react-js': jsxSnippet, ts: tsSnippet, js: jsSnippet }[flavour](ex);
 }
 
-function ChartDoc({ ex, flavour, setFlavour }: { ex: Example; flavour: Flavour; setFlavour: (f: Flavour) => void }) {
+function ChartDoc({
+  ex,
+  flavour,
+  setFlavour,
+  custom,
+  setCustom,
+}: {
+  ex: Example;
+  flavour: Flavour;
+  setFlavour: (f: Flavour) => void;
+  custom: Custom;
+  setCustom: (c: Custom) => void;
+}) {
   const m = useManifest();
   const [stored, setMode] = useStored<'files' | 'single'>('tc-mode', 'files');
   const f = FLAVOURS[flavour];
@@ -297,21 +311,31 @@ function ChartDoc({ ex, flavour, setFlavour }: { ex: Example; flavour: Flavour; 
   const file = chartFile(ex.type);
   const comp = COMPONENT[ex.type];
   const c = m?.charts[ex.type];
+  const extra = customOptions(custom, ex.type).code;
+  const usage = snippetFor(extra.length ? { ...ex, props: mergeProps(ex.props, extra) } : ex, flavour);
   return (
     <section>
       <h2>{ex.title}</h2>
-      <p className="blurb">
-        {ex.blurb} <a href={`#/?focus=${ex.id}`}>See it live →</a>
-      </p>
+      <p className="blurb">{ex.blurb}</p>
+
+      <h3>Customize</h3>
+      <p className="meta">Change colors, the legend and text here. The code below updates to match.</p>
+      <Customizer ex={ex} custom={custom} setCustom={setCustom} />
+
       <FlavourTabs flavour={flavour} setFlavour={setFlavour} />
 
       <h3>Usage</h3>
+      {extra.length > 0 && (
+        <p className="meta">
+          Includes your changes: {extra.map(([k]) => <code key={k}>{k}</code>).reduce<ReactNode[]>((a, el, i) => (i ? [...a, ', ', el] : [el]), [])}.
+        </p>
+      )}
       {ex.needsWorld && (
         <p className="meta">
           Uses country shapes from <code>world-atlas</code> (Natural Earth data). In React, JSON imports need <code>resolveJsonModule</code> in tsconfig.
         </p>
       )}
-      <CodeBlock code={snippetFor(ex, flavour)} file={`${f.react ? comp.replace(/Chart$/, '') + 'Example' : 'main'}.${f.ext}`} />
+      <CodeBlock code={usage} file={`${f.react ? comp.replace(/Chart$/, '') + 'Example' : 'main'}.${f.ext}`} />
 
       <h3>The chart</h3>
       {f.single ? (
@@ -360,7 +384,17 @@ function ChartDoc({ ex, flavour, setFlavour }: { ex: Example; flavour: Flavour; 
             <code>destroy()</code>.
           </li>
         )}
-        <li>Charts follow the page theme (<code>&lt;html data-theme&gt;</code>, then the OS setting). Override with <code>theme: 'light' | 'dark'</code>.</li>
+        <li>
+          Charts follow the page theme (<code>&lt;html data-theme&gt;</code>, then the OS setting). Override with <code>theme: 'light' | 'dark'</code>.
+        </li>
+        <li>
+          Colors: <code>colors</code> (series), <code>colorScale</code>, <code>divergingColors</code>, <code>positiveColor</code>/<code>negativeColor</code>; fonts and
+          text colors: <code>appearance</code>; legend: <code>legend: {'{'} position, align, marker, toggle, hidden, format, onToggle {'}'}</code>. See{' '}
+          <a href="#/docs">Docs → Customize</a>.
+        </li>
+        <li>
+          From code: <code>{f.react ? 'ref.current.chart()' : 'chart'}.toggleSeries(name)</code> hides or shows a series; <code>hiddenSeries()</code> lists hidden ones.
+        </li>
       </ul>
     </section>
   );
@@ -498,6 +532,8 @@ function LiveDoc({ flavour, setFlavour, code }: { flavour: Flavour; setFlavour: 
 export function CodePage({ id }: { id?: string }) {
   const current = id ?? 'setup';
   const [flavour, setFlavour] = useStored<Flavour>('tc-flavour', 'react-ts');
+  // Kept while moving between charts, so one set of brand colors applies to all of them.
+  const [custom, setCustom] = useState<Custom>(DEFAULT_CUSTOM);
   const ex = EXAMPLES.find((e) => e.id === current);
   const link = (key: string, title: string) => (
     <a key={key} href={`#/code/${key}`} className={key === current ? 'on' : ''} aria-current={key === current ? 'page' : undefined}>
@@ -521,7 +557,7 @@ export function CodePage({ id }: { id?: string }) {
       <main className="code-main">
         {current === 'setup' && <Setup flavour={flavour} setFlavour={setFlavour} />}
         {current === 'live' && <LiveDoc flavour={flavour} setFlavour={setFlavour} code={live} />}
-        {ex && <ChartDoc ex={ex} flavour={flavour} setFlavour={setFlavour} />}
+        {ex && <ChartDoc key={ex.id} ex={ex} flavour={flavour} setFlavour={setFlavour} custom={custom} setCustom={setCustom} />}
       </main>
     </div>
   );

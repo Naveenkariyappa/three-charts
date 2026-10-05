@@ -2,6 +2,12 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { createChart } from '../core';
 
 /** Option values that change on every render (callbacks) must not trigger a rebuild. */
+function withRemoved(prev, next) {
+  const out = { ...next };
+  for (const k of Object.keys(prev)) if (!(k in out)) out[k] = undefined;
+  return out;
+}
+
 function changed(prev, next) {
   const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
   for (const k of keys) {
@@ -46,7 +52,7 @@ export const ThreeChart = forwardRef(function ThreeChart(props, ref) {
   useEffect(() => {
     if (!chart.current) return;
     if (changed(applied.current, options)) {
-      chart.current.update(withHandlers(options));
+      chart.current.update(withHandlers(withRemoved(applied.current, options)));
       applied.current = options;
     }
   });

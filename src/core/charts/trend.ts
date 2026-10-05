@@ -244,6 +244,7 @@ export class BumpChart extends MarkChart<BumpOptions> {
 
 export class HorizonChart extends MarkChart<HorizonOptions> {
   readonly type = 'horizon' as const;
+  protected legendToggles = false;
   protected space: 'data' | 'pixel' = 'pixel';
   protected showAxes = false;
   private rowH = 0;

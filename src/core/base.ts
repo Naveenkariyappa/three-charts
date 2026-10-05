@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { getEngine, shared, type EngineClient } from './engine';
-import { resolveTheme, seriesColor, type Theme } from './theme';
+import { customTheme, seriesColor, type Theme } from './theme';
 import { escapeHtml } from './scale';
-import type { Chart, CommonOptions, HitInfo } from './types';
+import type { Chart, CommonOptions, HitInfo, LegendOptions } from './types';
 
 /** Internal hit result: public HitInfo plus what the tooltip needs. */
 export interface Hit extends HitInfo {
@@ -18,13 +18,15 @@ export interface LegendItem {
 
 const CSS = `
 .tc-root{position:relative;display:flex;flex-direction:column;width:100%;height:100%;min-height:0;box-sizing:border-box;
-  font:12px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--tc-text);user-select:none;-webkit-user-select:none}
-.tc-title{font-size:13px;font-weight:600;padding:2px 4px 6px;color:var(--tc-text)}
+  font:12px/1.4 var(--tc-font);color:var(--tc-text);user-select:none;-webkit-user-select:none}
+.tc-title{font-size:var(--tc-title-size);font-weight:600;padding:2px 4px 6px;color:var(--tc-text)}
+.tc-body{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.tc-body.tc-side{flex-direction:row}
 .tc-title:empty{display:none}
-.tc-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none}
+.tc-stage{position:relative;flex:1;min-width:0;min-height:0;overflow:hidden;touch-action:none}
 .tc-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .tc-overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-.tc-label{position:absolute;white-space:nowrap;font-size:11px;color:var(--tc-muted);font-variant-numeric:tabular-nums}
+.tc-label{position:absolute;white-space:nowrap;font-size:var(--tc-font-size);color:var(--tc-muted);font-variant-numeric:tabular-nums}
 .tc-label.tc-strong{color:var(--tc-text2)}
 .tc-label.tc-clip{overflow:hidden;text-overflow:ellipsis}
 .tc-hl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
@@ -36,9 +38,18 @@ const CSS = `
 .tc-sw{width:8px;height:8px;border-radius:2px;flex:none}
 .tc-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;padding:6px 4px 0}
 .tc-legend:empty{display:none}
+.tc-legend.tc-top{order:-1;padding:0 4px 6px}
+.tc-legend.tc-left,.tc-legend.tc-right{flex-direction:column;flex-wrap:nowrap;align-items:flex-start;gap:4px;max-width:40%;overflow:auto;padding:0 0 0 12px}
+.tc-legend.tc-left{order:-1;padding:0 12px 0 0}
+.tc-legend.tc-start{justify-content:flex-start}
+.tc-legend.tc-end{justify-content:flex-end}
+.tc-legend .tc-sw.tc-circle{border-radius:50%}
+.tc-legend .tc-sw.tc-line{width:14px;height:3px;border-radius:2px}
 .tc-ramp{display:flex;align-items:center;gap:8px;color:var(--tc-muted);font-size:11px;font-variant-numeric:tabular-nums}
 .tc-ramp i{display:block;width:160px;height:8px;border-radius:2px}
-.tc-legend button{all:unset;display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--tc-text2);padding:2px 0}
+.tc-legend button,.tc-legend .tc-key{all:unset;display:flex;align-items:center;gap:6px;color:var(--tc-text2);padding:2px 0;white-space:nowrap}
+.tc-legend button{cursor:pointer}
+.tc-legend button:hover{color:var(--tc-text)}
 .tc-legend button:focus-visible{outline:2px solid var(--tc-text2);outline-offset:2px;border-radius:2px}
 .tc-legend button.tc-off{opacity:.4;text-decoration:line-through}
 .tc-crosshair{position:absolute;top:0;width:1px;background:var(--tc-axis);display:none}
@@ -104,6 +115,12 @@ export class LabelPool {
   }
 }
 
+/** `legend` accepts a boolean shorthand; normalize it. */
+export function legendOptions(legend: boolean | LegendOptions | undefined): LegendOptions {
+  if (legend === undefined) return {};
+  return typeof legend === 'boolean' ? { show: legend } : legend;
+}
+
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
 export abstract class BaseChart<O extends CommonOptions = CommonOptions> implements EngineClient, Chart<O> {
@@ -116,6 +133,7 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
   readonly overlay: HTMLDivElement;
   readonly labels: LabelPool;
   private titleEl: HTMLDivElement;
+  private bodyEl: HTMLDivElement;
   private legendEl: HTMLDivElement;
   private tooltipEl: HTMLDivElement;
 
@@ -133,6 +151,8 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
   scene = new THREE.Scene();
   /** Series names toggled off in the legend. */
   hidden = new Set<string>();
+  /** False when the legend is a key (e.g. Increase / Decrease) rather than a list of series that can be hidden. */
+  protected legendToggles = true;
 
   /** Entry animation progress, 0 -> 1 (eased). */
   protected progress = 1;
@@ -157,7 +177,8 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
   constructor(container: HTMLElement, options: O) {
     injectStyles();
     this.opts = options;
-    this.theme = resolveTheme(options.theme);
+    this.theme = customTheme(options.theme, options);
+    this.hidden = new Set(legendOptions(options.legend).hidden);
 
     this.root = document.createElement('div');
     this.root.className = 'tc-root';
@@ -178,7 +199,10 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
     this.hintEl.className = 'tc-hint';
     this.hintEl.textContent = 'Click the chart (or hold Ctrl/⌘) to zoom with the wheel';
     this.stage.append(this.canvas, this.overlay, this.tooltipEl, this.hintEl);
-    this.root.append(this.titleEl, this.stage, this.legendEl);
+    this.bodyEl = document.createElement('div');
+    this.bodyEl.className = 'tc-body';
+    this.bodyEl.append(this.stage, this.legendEl);
+    this.root.append(this.titleEl, this.bodyEl);
     container.appendChild(this.root);
     this.labels = new LabelPool(this.overlay);
 
@@ -259,8 +283,22 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
   // ---- public API -----------------------------------------------------------
 
   update(options: Partial<O>) {
+    const prev = legendOptions(this.opts.legend).hidden;
     this.opts = { ...this.opts, ...options };
+    const next = legendOptions(this.opts.legend).hidden;
+    if (JSON.stringify(next) !== JSON.stringify(prev)) this.hidden = new Set(next);
     if (this.built) this.rebuild();
+  }
+
+  toggleSeries(name: string, visible = this.hidden.has(name)) {
+    if (visible === !this.hidden.has(name)) return;
+    if (visible) this.hidden.delete(name);
+    else this.hidden.add(name);
+    if (this.built) this.rebuild();
+  }
+
+  hiddenSeries(): string[] {
+    return [...this.hidden];
   }
 
   resize() {
@@ -321,7 +359,7 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
 
   protected rebuild() {
     if (this.destroyed) return;
-    this.theme = resolveTheme(this.opts.theme);
+    this.theme = customTheme(this.opts.theme, this.opts);
     this.applyCssVars();
     this.titleEl.textContent = this.opts.title ?? '';
     this.root.style.background = this.opts.background ?? 'transparent';
@@ -384,6 +422,9 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
     s.setProperty('--tc-border', t.border);
     s.setProperty('--tc-surface', t.surface);
     s.setProperty('--tc-tip-bg', t.tooltipBg);
+    s.setProperty('--tc-font', t.font);
+    s.setProperty('--tc-font-size', t.fontSize + 'px');
+    s.setProperty('--tc-title-size', (this.opts.appearance?.titleSize ?? 13) + 'px');
   }
 
   private measureNow(): boolean {
@@ -407,24 +448,42 @@ export abstract class BaseChart<O extends CommonOptions = CommonOptions> impleme
 
   /** Rebuild the legend (e.g. after a layout changed a color scale's range). */
   protected renderLegend() {
-    const items = this.legendItems();
+    const lo = legendOptions(this.opts.legend);
+    const pos = lo.position ?? 'bottom';
+    const side = pos === 'left' || pos === 'right';
+    this.bodyEl.className = side ? 'tc-body tc-side' : 'tc-body';
+    this.legendEl.className = `tc-legend tc-${pos}` + (lo.align && lo.align !== 'center' ? ` tc-${lo.align}` : '');
     this.legendEl.textContent = '';
-    if (this.opts.legend === false) return;
+    if (lo.show === false) return;
+    const items = this.legendItems();
     const custom = this.customLegend();
     if (custom) this.legendEl.appendChild(custom);
-    if (items.length < 2) return;
+    if (items.length < (lo.show ? 1 : 2)) return;
+    const toggles = this.legendToggles && lo.toggle !== false;
+    const marker = lo.marker && lo.marker !== 'square' ? ` tc-${lo.marker}` : '';
     for (const it of items) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.setAttribute('aria-pressed', String(!this.hidden.has(it.name)));
-      b.className = this.hidden.has(it.name) ? 'tc-off' : '';
-      b.innerHTML = `<span class="tc-sw" style="background:${it.color}"></span>${escapeHtml(it.name)}`;
-      b.onclick = () => {
-        if (this.hidden.has(it.name)) this.hidden.delete(it.name);
-        else this.hidden.add(it.name);
-        this.rebuild();
-      };
-      this.legendEl.appendChild(b);
+      const off = this.hidden.has(it.name);
+      const el = document.createElement(toggles ? 'button' : 'span');
+      el.innerHTML = `<span class="tc-sw${marker}" style="background:${it.color}"></span>${escapeHtml(lo.format ? lo.format(it.name) : it.name)}`;
+      if (toggles) {
+        const b = el as HTMLButtonElement;
+        b.type = 'button';
+        b.title = 'Click to hide or show · double-click to show only this';
+        b.setAttribute('aria-pressed', String(!off));
+        b.className = off ? 'tc-off' : '';
+        b.onclick = () => {
+          this.toggleSeries(it.name);
+          lo.onToggle?.(it.name, !this.hidden.has(it.name));
+        };
+        b.ondblclick = () => {
+          // Isolate this item; isolating it again shows everything.
+          const others = items.filter((o) => o.name !== it.name);
+          const alone = others.every((o) => this.hidden.has(o.name));
+          this.hidden = new Set(alone ? [] : others.map((o) => o.name));
+          this.rebuild();
+        };
+      } else el.className = 'tc-key';
+      this.legendEl.appendChild(el);
     }
   }
 

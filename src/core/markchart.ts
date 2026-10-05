@@ -75,11 +75,19 @@ export function inkOn(bg: string): string {
 let measureCtx: CanvasRenderingContext2D | null = null;
 
 /** Width in CSS px of `text` in the chart font (labels are HTML, so this matches what renders). */
-export function textWidth(text: string, size = 11, weight = 400): number {
+export function textWidth(text: string, size = measure.size, weight = 400): number {
   measureCtx ??= document.createElement('canvas').getContext('2d');
   if (!measureCtx) return text.length * size * 0.6;
-  measureCtx.font = `${weight} ${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  measureCtx.font = `${weight} ${size}px ${measure.family}`;
   return measureCtx.measureText(text).width;
+}
+
+const measure = { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', size: 11 };
+
+/** Measure text in this font from now on (set from the chart's theme before laying out marks). */
+export function setMeasureFont(family: string, size: number) {
+  measure.family = family;
+  measure.size = size;
 }
 
 /** Point on a circle, angle clockwise from 12 o'clock, y down. */
@@ -516,6 +524,7 @@ export abstract class MarkChart<O extends CartesianOptions> extends CartesianCha
       this.disposeScene(this.group);
     }
     const b = new MarkBuilder(this.origin.x, this.origin.y, this.space === 'pixel', this.theme.surface);
+    setMeasureFont(this.theme.font, this.theme.fontSize);
     this.marks(b);
     this.group = b.build(this.dpr, this.theme.surface);
     this.scene.add(this.group);

@@ -26,6 +26,13 @@ function changed(prev: Record<string, unknown>, next: Record<string, unknown>) {
   return false;
 }
 
+/** `next`, plus `undefined` for props that were removed, so the chart drops them instead of keeping the old value. */
+function withRemoved<T>(prev: T, next: T): T {
+  const out = { ...next } as Record<string, unknown>;
+  for (const k of Object.keys(prev as object)) if (!(k in out)) out[k] = undefined;
+  return out as T;
+}
+
 /**
  * Generic chart component: `<ThreeChart type="line" series={...} />`.
  *
@@ -61,7 +68,7 @@ export const ThreeChart = forwardRef<ChartHandle, ThreeChartProps>(function Thre
   useEffect(() => {
     if (!chart.current) return;
     if (changed(applied.current as Record<string, unknown>, options as Record<string, unknown>)) {
-      chart.current.update(withHandlers(options as ChartOptions));
+      chart.current.update(withHandlers(withRemoved(applied.current, options) as ChartOptions));
       applied.current = options;
     }
   });

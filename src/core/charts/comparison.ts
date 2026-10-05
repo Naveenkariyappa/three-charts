@@ -233,12 +233,13 @@ export class RangeBarChart extends CategoryChart<RangeBarOptions> {
 
 export class WaterfallChart extends CategoryChart<WaterfallOptions> {
   readonly type = 'waterfall' as const;
+  protected legendToggles = false;
   private steps: { from: number; to: number; total: boolean }[] = [];
 
   protected legendItems(): LegendItem[] {
     return [
-      { name: 'Increase', color: this.theme.series[2] },
-      { name: 'Decrease', color: this.theme.series[7] },
+      { name: 'Increase', color: this.theme.positive },
+      { name: 'Decrease', color: this.theme.negative },
       { name: 'Total', color: this.theme.series[0] },
     ];
   }
@@ -260,8 +261,8 @@ export class WaterfallChart extends CategoryChart<WaterfallOptions> {
   }
 
   protected marks(b: MarkBuilder) {
-    const up = this.theme.series[2];
-    const down = this.theme.series[7];
+    const up = this.theme.positive;
+    const down = this.theme.negative;
     const tot = this.theme.series[0];
     this.steps.forEach((s, i) => {
       const c = this.cat(i);

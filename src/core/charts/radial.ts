@@ -156,6 +156,7 @@ export class ParliamentChart extends MarkChart<ParliamentOptions> {
 /** A tree laid out around a circle: root at the center, leaves on the rim. */
 export class RadialTreeChart extends MarkChart<RadialTreeOptions> {
   readonly type = 'radialTree' as const;
+  protected legendToggles = false;
   protected space: 'data' | 'pixel' = 'pixel';
   protected showAxes = false;
 

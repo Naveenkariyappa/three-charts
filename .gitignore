@@ -7,3 +7,5 @@ public/registry
 public/r
 public/registry.tmp-*
 public/r.tmp-*
+public/r *
+public/registry *

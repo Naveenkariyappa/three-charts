@@ -629,6 +629,7 @@ export class ChordChart extends MarkChart<ChordOptions> {
 
 export class ArcDiagramChart extends MarkChart<ArcDiagramOptions> {
   readonly type = 'arcDiagram' as const;
+  protected legendToggles = false;
   protected space: 'data' | 'pixel' = 'pixel';
   protected showAxes = false;
 

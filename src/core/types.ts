@@ -1,4 +1,4 @@
-import type { ThemeMode } from './theme';
+import type { Appearance, ThemeMode } from './theme';
 import type { ExtraOptions } from './types2';
 
 /** Any array of numbers. Typed arrays (Float32Array etc.) are used as-is, with no copy, for large data. */
@@ -17,10 +17,20 @@ export interface CommonOptions {
   title?: string;
   /** 'auto' follows `<html data-theme>` first, then the OS setting. */
   theme?: ThemeMode;
-  /** Override the categorical palette (fixed order, max 8). */
+  /** Categorical palette in order: the first series gets colors[0], and so on. Default: 8 colorblind-checked hues. */
   colors?: string[];
-  /** Legend shows automatically for 2+ series; set false to hide it. */
-  legend?: boolean;
+  /** Sequential color scale, low → high, for heatmaps, maps, surfaces and densities. Two or more colors. */
+  colorScale?: string[];
+  /** Diverging color scale, negative → neutral → positive. Three or more colors. */
+  divergingColors?: string[];
+  /** Gains, up candles, increases. */
+  positiveColor?: string;
+  /** Losses, down candles, decreases. */
+  negativeColor?: string;
+  /** Fonts and the colors of text, grid, axes and tooltip. */
+  appearance?: Appearance;
+  /** Shown automatically for 2+ series. `false` hides it, `true` always shows it, or pass options. */
+  legend?: boolean | LegendOptions;
   tooltip?: boolean;
   /** Entry animation. Default true. */
   animate?: boolean;
@@ -28,6 +38,25 @@ export interface CommonOptions {
   background?: string;
   onClick?: (hit: HitInfo) => void;
   onHover?: (hit: HitInfo | null) => void;
+}
+
+export interface LegendOptions {
+  /** Default: shown when there are 2+ series. */
+  show?: boolean;
+  /** Default 'bottom'. */
+  position?: 'top' | 'bottom' | 'left' | 'right';
+  /** Default 'center'. */
+  align?: 'start' | 'center' | 'end';
+  /** Swatch shape. Default 'square'. */
+  marker?: 'square' | 'circle' | 'line';
+  /** Click an item to hide or show its series; double-click to show only that series. Default true. */
+  toggle?: boolean;
+  /** Series hidden when the chart first draws (they can be shown from the legend). */
+  hidden?: string[];
+  /** Change the text of an item, e.g. to add a total. */
+  format?: (name: string) => string;
+  /** Called after an item is toggled from the legend. */
+  onToggle?: (name: string, visible: boolean) => void;
 }
 
 export interface AxisOptions {
@@ -295,5 +324,9 @@ export interface Chart<O extends CommonOptions = CommonOptions> {
   resetView(): void;
   /** PNG data URL of the plot. */
   toPNG(): string;
+  /** Show or hide a series (or slice, group…) by its legend name. Omit `visible` to flip it. */
+  toggleSeries(name: string, visible?: boolean): void;
+  /** Names currently hidden. */
+  hiddenSeries(): string[];
   destroy(): void;
 }

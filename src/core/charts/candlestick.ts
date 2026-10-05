@@ -146,8 +146,8 @@ export class CandlestickChart<O extends Opts = Opts> extends CartesianChart<O> {
     const n = open.length;
     const o = this.origin;
     const half = this.spacing() * 0.35;
-    const up = new THREE.Color(this.theme.series[2]);
-    const down = new THREE.Color(this.theme.series[7]);
+    const up = new THREE.Color(this.theme.positive);
+    const down = new THREE.Color(this.theme.negative);
     const ohlc = this.opts.type === 'ohlc';
     const bRects = new Float32Array(n * 4);
     const wRects = new Float32Array(n * 4);
@@ -260,7 +260,7 @@ export class CandlestickChart<O extends Opts = Opts> extends CartesianChart<O> {
     if (i < 0) return null;
     const { open, high, low, close } = this.d;
     const [hx, hy] = this.toPx(this.xAt(i), close[i]);
-    const color = close[i] >= open[i] ? this.theme.series[2] : this.theme.series[7];
+    const color = close[i] >= open[i] ? this.theme.positive : this.theme.negative;
     this.hover = { px: hx, py: hy, color };
     const chg = ((close[i] - open[i]) / open[i]) * 100;
     const ha = this.opts.type === 'heikinAshi' ? 'HA ' : '';

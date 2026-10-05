@@ -4,29 +4,50 @@ import { LineChart, type ChartHandle } from '../react/ThreeChart';
 const WINDOW = 600;
 // Module-level so re-renders (e.g. the pause toggle) don't look like new options.
 const Y_AXIS = { label: 'Usage (%)', min: 0, max: 100 };
+const BENCH_LEGEND = { position: 'top', align: 'end', marker: 'line' } as const;
 const EMPTY = [
   { name: 'CPU', y: [] },
   { name: 'Memory', y: [] },
 ];
 
-/** Streams two signals at 20 updates/second through `ref.update()`. */
-export function LiveChart({ height = 320 }: { height?: number }) {
+const cpuAt = (t: number) => 50 + Math.sin(t / 15) * 20 + (Math.random() - 0.5) * 6;
+const memAt = (t: number) => 40 + Math.cos(t / 23) * 15 + (Math.random() - 0.5) * 6;
+
+/** A window that is already full, so the stream opens mid-flow rather than climbing from zero. */
+function filledWindow() {
+  const s = { t: WINDOW, a: new Float32Array(WINDOW), b: new Float32Array(WINDOW), x: new Float64Array(WINDOW) };
+  for (let i = 0; i < WINDOW; i++) {
+    s.x[i] = i + 1;
+    s.a[i] = cpuAt(i + 1);
+    s.b[i] = memAt(i + 1);
+  }
+  return s;
+}
+
+/** Streams two signals at 20 updates/second through `ref.update()`. `bench` adds a live readout of the latest values. */
+export function LiveChart({ height = 320, bench = false }: { height?: number; bench?: boolean }) {
   const ref = useRef<ChartHandle>(null);
+  const cpuEl = useRef<HTMLElement>(null);
+  const memEl = useRef<HTMLElement>(null);
   const [running, setRunning] = useState(true);
-  const state = useRef({ t: 0, a: new Float32Array(WINDOW), b: new Float32Array(WINDOW), x: new Float64Array(WINDOW) });
+  const state = useRef<ReturnType<typeof filledWindow> | null>(null);
+  state.current ??= filledWindow();
 
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => {
-      const s = state.current;
+      const s = state.current!;
       // Shift the window left by one and append the newest sample.
       s.a.copyWithin(0, 1);
       s.b.copyWithin(0, 1);
       s.x.copyWithin(0, 1);
       s.t++;
       s.x[WINDOW - 1] = s.t;
-      s.a[WINDOW - 1] = 50 + Math.sin(s.t / 15) * 20 + (Math.random() - 0.5) * 6;
-      s.b[WINDOW - 1] = 40 + Math.cos(s.t / 23) * 15 + (Math.random() - 0.5) * 6;
+      s.a[WINDOW - 1] = cpuAt(s.t);
+      s.b[WINDOW - 1] = memAt(s.t);
+      // Readouts are written directly, so 20 ticks a second never re-render React.
+      if (cpuEl.current) cpuEl.current.textContent = s.a[WINDOW - 1].toFixed(1) + '%';
+      if (memEl.current) memEl.current.textContent = s.b[WINDOW - 1].toFixed(1) + '%';
       ref.current?.update({
         series: [
           { name: 'CPU', x: s.x, y: s.a },
@@ -36,6 +57,29 @@ export function LiveChart({ height = 320 }: { height?: number }) {
     }, 50);
     return () => clearInterval(id);
   }, [running]);
+
+  if (bench) {
+    return (
+      <div className="bench">
+        <div className="readout">
+          <span>
+            CPU<b ref={cpuEl}>–</b>
+          </span>
+          <span>
+            Memory<b ref={memEl}>–</b>
+          </span>
+          <span className={running ? 'live' : 'live paused'}>{running ? 'Live · 20 Hz' : 'Paused'}</span>
+        </div>
+        <LineChart ref={ref} height={height} animate={false} zoom={false} yAxis={Y_AXIS} series={EMPTY} legend={BENCH_LEGEND} />
+        <div className="bench-foot">
+          <span>600-sample window · ref.update() · no React re-render</span>
+          <button className="btn small" onClick={() => setRunning((r) => !r)}>
+            {running ? 'Pause' : 'Resume'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

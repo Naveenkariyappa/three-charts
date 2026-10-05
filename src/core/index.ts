@@ -204,5 +204,5 @@ export const chartTypes = Object.keys(registry) as ChartType[];
 
 export * from './types';
 export * from './types2';
-export { LIGHT, DARK, type Theme, type ThemeMode } from './theme';
+export { LIGHT, DARK, type Appearance, type Theme, type ThemeMode } from './theme';
 export { topoFeatures, type GeoFeature } from './geo';

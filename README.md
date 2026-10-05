@@ -125,6 +125,54 @@ chart.destroy(); // when removing it
 
 Every chart page has a complete example with realistic data for that chart.
 
+### 4. Customize it
+
+Every chart takes the same color, text and legend options. The **Customize** panel on each chart's page lets you change them on a live chart and copies them into the usage code.
+
+```ts
+{
+  // Colors
+  colors: ['#0f766e', '#ea580c', '#4f46e5'],      // series, in order
+  colorScale: ['#e0f2fe', '#0369a1', '#0c4a6e'],  // heatmaps, maps, surfaces (low → high)
+  divergingColors: ['#b91c1c', '#f5f5f4', '#1d4ed8'],
+  positiveColor: '#16a34a',                       // up candles, increases, gains
+  negativeColor: '#dc2626',
+  background: '#ffffff',
+  theme: 'light',                                 // or 'dark'; default follows the page
+
+  // Text
+  title: 'Revenue by region',
+  appearance: {
+    fontFamily: 'Inter, system-ui, sans-serif',
+    fontSize: 12,                                 // labels; titleSize for the title
+    textColor: '#111827',
+    mutedTextColor: '#6b7280',                    // axis ticks
+    gridColor: '#e5e7eb',
+    tooltipBackground: '#ffffff',
+  },
+
+  // Legend
+  legend: {
+    position: 'right',                            // 'top' | 'bottom' | 'left' | 'right'
+    align: 'start',                               // 'start' | 'center' | 'end'
+    marker: 'circle',                             // 'square' | 'circle' | 'line'
+    hidden: ['2023'],                             // start with these series hidden
+    format: (name) => name.toUpperCase(),
+    onToggle: (name, visible) => console.log(name, visible),
+  },
+
+  // Interaction
+  tooltip: true,
+  onHover: (hit) => {},                           // hit: { series, index, values } or null
+  onClick: (hit) => {},
+}
+```
+
+- `appearance` also takes `titleSize`, `secondaryTextColor`, `axisColor` and `borderColor`.
+- `legend: false` hides the legend, `legend: true` always shows it (by default it appears for 2+ series).
+- A series' own `color` (or a slice's, a node's…) wins over `colors`.
+- From code: `chart.toggleSeries(name)` hides or shows a series and `chart.hiddenSeries()` lists the hidden ones (in React, `ref.current.chart()`).
+
 ### Good to know
 
 - **Give the container a height.** The chart fills its box (`height` prop in React, CSS height otherwise).
@@ -135,7 +183,7 @@ Every chart page has a complete example with realistic data for that chart.
 - **Next.js:** the React files start with `'use client'` and are safe to import on the server.
 - **Dark mode** follows `<html data-theme="dark">`, then the OS setting. Force it with `theme: 'light' | 'dark'`.
 - **Linked panels:** give charts the same `sync: 'name'` and they zoom and pan together (e.g. price + MACD + RSI).
-- **Interaction:** hover for tooltips, click legend items to hide series, drag to pan (2D) or orbit (3D), click a chart (or hold Ctrl/⌘) and scroll to zoom, double-click to reset.
+- **Interaction:** hover for tooltips, click a legend item to hide its series (double-click to show only that one), drag to pan (2D) or orbit (3D), click a chart (or hold Ctrl/⌘) and scroll to zoom, double-click to reset.
 - **It's your code.** Change colors, labels or behavior in the files you copied; nothing will overwrite them.
 
 ---
@@ -209,7 +257,7 @@ The site deploys to Vercel as a static Vite build (`vercel.json`). `npm run buil
 ## Interaction
 
 - Hover any mark for a tooltip.
-- Click legend items to toggle series.
+- Click a legend item to hide or show its series; double-click it to show only that series.
 - Drag to pan (2D) or orbit (3D).
 - Click into a chart, or hold Ctrl/⌘, to zoom with the wheel. Plain scrolling still scrolls the page.
 - Double-click resets the zoom.
