@@ -673,12 +673,27 @@ export abstract class MarkChart<O extends CartesianOptions> extends CartesianCha
         break;
       }
     }
+    // Hover is a soft tint toward the text color (lighter on dark, darker on light), not a hard outline:
+    // shapes get the tint, points a faint ring, lines a translucent halo.
+    const ink = this.theme.textPrimary;
     const path = document.createElementNS(SVGNS, 'path');
     path.setAttribute('d', d);
-    path.setAttribute('fill', r.k === 'path' ? 'none' : 'rgba(127,127,127,0.12)');
-    path.setAttribute('stroke', this.theme.textPrimary);
-    path.setAttribute('stroke-width', '2');
     path.setAttribute('stroke-linejoin', 'round');
+    if (r.k === 'path') {
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', ink);
+      path.setAttribute('stroke-opacity', '0.35');
+      path.setAttribute('stroke-width', '4');
+      path.setAttribute('stroke-linecap', 'round');
+    } else {
+      path.setAttribute('fill', ink);
+      path.setAttribute('fill-opacity', '0.16');
+      if (r.k === 'circle') {
+        path.setAttribute('stroke', ink);
+        path.setAttribute('stroke-opacity', '0.5');
+        path.setAttribute('stroke-width', '1.5');
+      }
+    }
     if (!append) this.svg.textContent = '';
     this.svg.appendChild(path);
   }

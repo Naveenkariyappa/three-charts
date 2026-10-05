@@ -466,9 +466,11 @@ export class VennChart extends MarkChart<VennOptions> {
       el.setAttribute('cx', String(this.plot.left + c.x));
       el.setAttribute('cy', String(this.plot.top + c.y));
       el.setAttribute('r', String(c.r));
-      el.setAttribute('fill', 'none');
+      el.setAttribute('fill', this.theme.textPrimary);
+      el.setAttribute('fill-opacity', '0.12');
       el.setAttribute('stroke', this.theme.textPrimary);
-      el.setAttribute('stroke-width', '2');
+      el.setAttribute('stroke-opacity', '0.45');
+      el.setAttribute('stroke-width', '1.5');
       svg.appendChild(el);
     }
   }
