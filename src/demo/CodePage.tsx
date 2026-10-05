@@ -317,14 +317,16 @@ function ChartDoc({
   const file = chartFile(ex.type);
   const comp = COMPONENT[ex.type];
   const c = m?.charts[ex.type];
-  const extra = customOptions(custom, ex.type).code;
+  // How many palette colors this example uses, so the panel offers only swatches that change something.
+  const [slots, setSlots] = useState(8);
+  const extra = customOptions(custom, ex.type, slots).code;
   const usage = snippetFor(extra.length ? { ...ex, props: mergeProps(ex.props, extra) } : ex, flavour);
   return (
     <div className="chart-page">
       <PageHead id={ex.id} title={ex.title} blurb={ex.blurb} group={ex.group ?? ''} badges={[ex.type, ex.dim, ...(ex.scale ? [ex.scale] : [])]} />
       <div className="chart-cols">
       <div className="chart-preview">
-        <CustomPreview ex={ex} custom={custom} />
+        <CustomPreview ex={ex} custom={custom} onSlots={setSlots} />
       </div>
       <section className="chart-main">
 
@@ -405,7 +407,7 @@ function ChartDoc({
       </ul>
       </section>
       <aside className="chart-aside" aria-label="Customize">
-        <CustomPanel ex={ex} custom={custom} setCustom={setCustom} />
+        <CustomPanel ex={ex} custom={custom} setCustom={setCustom} slots={slots} />
       </aside>
       </div>
       <PrevNext id={ex.id} />

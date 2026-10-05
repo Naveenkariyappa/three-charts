@@ -673,7 +673,7 @@ tr:last-child td {
   font-weight: 600;
 }
 .seg button:focus-visible,
-.swatch:focus-within {
+.swatch:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -684,31 +684,31 @@ tr:last-child td {
   align-items: center;
 }
 .swatch {
-  position: relative;
-  width: 21px;
-  height: 21px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-.swatch span {
-  position: absolute;
-  inset: 0;
-  border-radius: 5px;
-  box-shadow: inset 0 0 0 1px var(--border);
-  pointer-events: none;
-}
-/* The (invisible) color input sits on top of its swatch so the click opens the picker itself:
-   relying on the label to forward the click doesn't open color pickers in every browser. */
-.swatch input {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-  border: 0;
+  /* The color input itself is the swatch, so clicking it opens the picker in every browser. */
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
   padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.swatch::-webkit-color-swatch {
+  border: 0;
+  border-radius: 5px;
+}
+.swatch::-moz-color-swatch {
+  border: 0;
+  border-radius: 5px;
+}
+.swatch:hover {
+  box-shadow: 0 0 0 1px var(--text2);
 }
 .check {
   display: inline-flex;

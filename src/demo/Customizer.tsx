@@ -10,6 +10,7 @@ import {
   defaultPalette,
   defaultUpDown,
   deltaE,
+  colorSlots,
   flagsFor,
   resolvedMode,
   type Custom,
@@ -55,7 +56,7 @@ function usePageMode(c: Custom) {
 }
 
 /** The example chart with the panel's options applied. */
-export function CustomPreview({ ex, custom }: { ex: Example; custom: Custom }) {
+export function CustomPreview({ ex, custom, onSlots }: { ex: Example; custom: Custom; onSlots?: (n: number) => void }) {
   const [base, setBase] = useState<ChartOptions | null>(null);
   const [error, setError] = useState<string | null>(null);
   usePageMode(custom);
@@ -64,7 +65,11 @@ export function CustomPreview({ ex, custom }: { ex: Example; custom: Custom }) {
     let live = true;
     setBase(null);
     buildOptions(ex)
-      .then((o) => live && setBase(o))
+      .then((o) => {
+        if (!live) return;
+        setBase(o);
+        onSlots?.(colorSlots(o as unknown as Record<string, unknown>));
+      })
       .catch((e: unknown) => live && setError(String(e)));
     return () => {
       live = false;
@@ -84,12 +89,12 @@ export function CustomPreview({ ex, custom }: { ex: Example; custom: Custom }) {
 }
 
 /** Controls for colors, legend, text and behavior. Only controls that change this chart type are shown. */
-export function CustomPanel({ ex, custom, setCustom }: { ex: Example; custom: Custom; setCustom: (c: Custom) => void }) {
+export function CustomPanel({ ex, custom, setCustom, slots = 8 }: { ex: Example; custom: Custom; setCustom: (c: Custom) => void; slots?: number }) {
   const mode = usePageMode(custom);
   const f = flagsFor(ex.type);
   const set = <K extends keyof Custom>(k: K, v: Custom[K]) => setCustom({ ...custom, [k]: v });
   const palette = custom.colors ?? defaultPalette(mode);
-  const close = palette.slice(1).flatMap((c, i) => (deltaE(palette[i], c) < 15 ? [i + 1] : []));
+  const close = palette.slice(1, slots).flatMap((c, i) => (deltaE(palette[i], c) < 15 ? [i + 1] : []));
   const ud = defaultUpDown(mode);
   const changed = JSON.stringify(custom) !== JSON.stringify(DEFAULT_CUSTOM);
 
@@ -106,22 +111,22 @@ export function CustomPanel({ ex, custom, setCustom }: { ex: Example; custom: Cu
             <Seg label="Theme" value={custom.theme} onChange={(v) => set('theme', v)} options={[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']]} />
           </Row>
           {f.palette && (
-            <Row label="Series">
+            <Row label={slots === 1 ? 'Color' : 'Series'}>
               <div className="swatches">
-                {palette.map((c, i) => (
-                  <label key={i} className="swatch" title={`Series ${i + 1}: ${c}`}>
-                    <input
-                      type="color"
-                      value={c}
-                      aria-label={`Series ${i + 1} color`}
-                      onChange={(e) => {
-                        const next = [...palette];
-                        next[i] = e.target.value;
-                        set('colors', next);
-                      }}
-                    />
-                    <span style={{ background: c }} />
-                  </label>
+                {palette.slice(0, slots).map((c, i) => (
+                  <input
+                    key={i}
+                    type="color"
+                    className="swatch"
+                    value={c}
+                    title={`Series ${i + 1}: ${c}`}
+                    aria-label={`Series ${i + 1} color`}
+                    onChange={(e) => {
+                      const next = [...palette];
+                      next[i] = e.target.value;
+                      set('colors', next);
+                    }}
+                  />
                 ))}
                 {custom.colors && (
                   <button type="button" className="link" onClick={() => set('colors', null)}>
@@ -161,14 +166,8 @@ export function CustomPanel({ ex, custom, setCustom }: { ex: Example; custom: Cu
           {f.updown && (
             <Row label="Up / down">
               <div className="swatches">
-                <label className="swatch" title="Up / gain">
-                  <input type="color" value={custom.positive ?? ud.positive} aria-label="Up color" onChange={(e) => set('positive', e.target.value)} />
-                  <span style={{ background: custom.positive ?? ud.positive }} />
-                </label>
-                <label className="swatch" title="Down / loss">
-                  <input type="color" value={custom.negative ?? ud.negative} aria-label="Down color" onChange={(e) => set('negative', e.target.value)} />
-                  <span style={{ background: custom.negative ?? ud.negative }} />
-                </label>
+                <input type="color" className="swatch" value={custom.positive ?? ud.positive} title="Up / gain" aria-label="Up color" onChange={(e) => set('positive', e.target.value)} />
+                <input type="color" className="swatch" value={custom.negative ?? ud.negative} title="Down / loss" aria-label="Down color" onChange={(e) => set('negative', e.target.value)} />
                 {(custom.positive || custom.negative) && (
                   <button type="button" className="link" onClick={() => setCustom({ ...custom, positive: null, negative: null })}>
                     Default
@@ -184,10 +183,7 @@ export function CustomPanel({ ex, custom, setCustom }: { ex: Example; custom: Cu
                 Transparent
               </label>
               {custom.background && (
-                <label className="swatch">
-                  <input type="color" value={custom.background} aria-label="Background color" onChange={(e) => set('background', e.target.value)} />
-                  <span style={{ background: custom.background }} />
-                </label>
+                <input type="color" className="swatch" value={custom.background} aria-label="Background color" onChange={(e) => set('background', e.target.value)} />
               )}
             </div>
           </Row>

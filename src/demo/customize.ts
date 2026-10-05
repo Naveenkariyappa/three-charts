@@ -110,7 +110,7 @@ export function flagsFor(type: ChartType): Flags {
  * The options the panel adds, as values (for the live chart) and as source text (for the code).
  * Only options that differ from the defaults, and that the chart type accepts, are included.
  */
-export function customOptions(c: Custom, type: ChartType): { values: Record<string, unknown>; code: [string, string][] } {
+export function customOptions(c: Custom, type: ChartType, slots = 8): { values: Record<string, unknown>; code: [string, string][] } {
   const f = flagsFor(type);
   const mode = resolvedMode(c);
   const values: Record<string, unknown> = {};
@@ -122,7 +122,8 @@ export function customOptions(c: Custom, type: ChartType): { values: Record<stri
 
   if (c.title) put('title', c.title);
   if (c.theme !== 'auto') put('theme', c.theme);
-  if (c.colors && f.palette) put('colors', c.colors);
+  // The code lists only the colors this chart uses; the live chart gets the same list.
+  if (c.colors && f.palette) put('colors', c.colors.slice(0, slots));
   const scale = SCALES[c.scale]?.light;
   if (scale && f.scale) put('colorScale', mode === 'dark' ? [...scale].reverse() : scale);
   const div = DIVERGING[c.diverging];
@@ -154,6 +155,32 @@ export function customOptions(c: Custom, type: ChartType): { values: Record<stri
   if (!c.animate) put('animate', false);
   if (f.cartesian && !c.grid) put('grid', false);
   return { values, code };
+}
+
+/**
+ * How many palette colors an example uses: one per series, slice, group or top-level branch, capped at 8.
+ * Charts colored some other way (one series, a color scale) use 1, so the panel doesn't offer swatches that change nothing.
+ */
+export function colorSlots(o: Record<string, unknown>): number {
+  const len = (k: string) => (Array.isArray(o[k]) ? (o[k] as unknown[]).length : 0);
+  const recs = (k: string) => (Array.isArray(o[k]) && typeof (o[k] as unknown[])[0] === 'object' ? (o[k] as Record<string, unknown>[]) : null);
+  const distinct = (list: Record<string, unknown>[] | null, f: string) => (list ? new Set(list.map((r) => r[f]).filter((v) => v !== undefined)).size : 0);
+  const tree = o.data as { children?: unknown[] } | undefined;
+  const n = Math.max(
+    len('series'),
+    len('groups'),
+    len('levels'),
+    len('bands'),
+    len('rings'),
+    recs('data') ? len('data') : 0,
+    tree && !Array.isArray(tree) && Array.isArray(tree.children) ? tree.children.length : 0,
+    distinct(recs('nodes'), 'group'),
+    distinct(recs('tasks'), 'group'),
+    distinct(recs('items'), 'group'),
+    distinct(recs('data'), 'group'),
+    distinct(recs('words'), 'group'),
+  );
+  return Math.min(8, Math.max(1, n));
 }
 
 /** A JS literal with single quotes, short arrays on one line. */
